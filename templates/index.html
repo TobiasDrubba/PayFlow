@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WeAli Payment Overview</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 30px;
+            border: 2px dashed #dee2e6;
+        }
+        .upload-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-weight: bold;
+            color: #495057;
+        }
+        select, input[type="file"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .upload-btn {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .upload-btn:hover {
+            background-color: #0056b3;
+        }
+        .summary-section {
+            margin-bottom: 30px;
+        }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .summary-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 4px solid #007bff;
+        }
+        .summary-card h3 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+        .summary-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .transactions-section {
+            margin-top: 30px;
+        }
+        .transaction-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .transaction-table th,
+        .transaction-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        .transaction-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+        .transaction-table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .source-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .source-wechat {
+            background-color: #28a745;
+            color: white;
+        }
+        .source-alipay {
+            background-color: #007bff;
+            color: white;
+        }
+        .type-income {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .type-expense {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .alert {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .alert-error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>WeAli Payment Overview</h1>
+        
+        {% if message %}
+        <div class="alert {{ 'alert-success' if success else 'alert-error' }}">
+            {{ message }}
+        </div>
+        {% endif %}
+        
+        <div class="upload-section">
+            <h2>Upload Transaction CSV</h2>
+            <form class="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="source_type">Transaction Source:</label>
+                    <select name="source_type" id="source_type" required>
+                        <option value="">Select source...</option>
+                        <option value="wechat">WeChat</option>
+                        <option value="alipay">Alipay</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="csv_file">CSV File:</label>
+                    <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+                </div>
+                <button type="submit" class="upload-btn">Upload Transactions</button>
+            </form>
+        </div>
+        
+        <div class="summary-section">
+            <h2>Transaction Summary</h2>
+            <div class="summary-cards">
+                <div class="summary-card">
+                    <h3>Total Transactions</h3>
+                    <div class="value">{{ summary.total_count }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>WeChat</h3>
+                    <div class="value">{{ summary.wechat_count }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Alipay</h3>
+                    <div class="value">{{ summary.alipay_count }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Income</h3>
+                    <div class="value" style="color: #28a745;">¥{{ "%.2f"|format(summary.total_income) }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Total Expense</h3>
+                    <div class="value" style="color: #dc3545;">¥{{ "%.2f"|format(summary.total_expense) }}</div>
+                </div>
+                <div class="summary-card">
+                    <h3>Net Amount</h3>
+                    <div class="value" style="color: {{ '#28a745' if summary.net_amount >= 0 else '#dc3545' }};">¥{{ "%.2f"|format(summary.net_amount) }}</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="transactions-section">
+            <h2>Recent Transactions</h2>
+            {% if transactions %}
+            <table class="transaction-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Amount</th>
+                        <th>Type</th>
+                        <th>Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for transaction in transactions %}
+                    <tr>
+                        <td>{{ transaction.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td>{{ transaction.description }}</td>
+                        <td>¥{{ "%.2f"|format(transaction.amount) }}</td>
+                        <td>
+                            <span class="type-{{ transaction.transaction_type }}">
+                                {{ transaction.transaction_type.title() }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="source-badge source-{{ transaction.source }}">
+                                {{ transaction.source }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No transactions found. Upload a CSV file to get started!</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>
