@@ -26,3 +26,4 @@ def list_payments() -> List[Payment]:
     Service-layer function to fetch all existing payments from storage.
     """
     return get_all_payments()
+

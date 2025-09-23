@@ -6,10 +6,10 @@ from typing import List
 from dotenv import load_dotenv
 import os
 
-from app.domain.models import Payment, PaymentSource
+from app.domain.models import Payment, PaymentSource, PaymentType
 
 load_dotenv()
-CSV_HEADER = ["id", "date", "amount", "currency", "merchant", "category", "source", "note"]
+CSV_HEADER = ["id", "date", "amount", "currency", "merchant", "auto_category", "source", "type", "note", "cust_category"]
 FILE_PATH = os.getenv("PAYMENTS_CSV_PATH")
 
 def load_payments_from_csv(csv_path: str) -> List[Payment]:
@@ -25,22 +25,19 @@ def load_payments_from_csv(csv_path: str) -> List[Payment]:
     with path.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            try:
-                payments.append(
-                    Payment(
-                        id=row["id"],
-                        date=datetime.strptime(row["date"], "%Y-%m-%d %H:%M:%S"),
-                        amount=float(row["amount"]),
-                        currency=row["currency"],
-                        merchant=row["merchant"],
-                        category=row.get("category", "") or "",
-                        source=PaymentSource(row["source"]) if row.get("source") else PaymentSource.OTHER,
-                        note=row.get("note", "") or "",
-                    )
+            payments.append(
+                Payment(
+                    id=row["id"],
+                    date=datetime.strptime(row["date"], "%Y-%m-%d %H:%M:%S"),
+                    amount=float(row["amount"]),
+                    currency=row["currency"],
+                    merchant=row["merchant"],
+                    auto_category=row.get("auto_category", "") or "",
+                    source=PaymentSource(row["source"]) if row.get("source") else PaymentSource.OTHER,
+                    type=PaymentType(row["type"]) if row.get("type") else PaymentType.NONE,
+                    note=row.get("note", "") or "",
                 )
-            except Exception:
-                # Skip malformed lines in existing CSV
-                continue
+            )
     return payments
 
 
@@ -63,9 +60,11 @@ def save_payments_to_csv(csv_path: str, payments: List[Payment]) -> None:
                     "amount": f"{p.amount:.2f}",
                     "currency": p.currency,
                     "merchant": p.merchant,
-                    "category": p.category,
+                    "auto_category": p.auto_category,
                     "source": p.source.value,
+                    "type": p.type.value if hasattr(p, "type") else PaymentType.NONE.value,
                     "note": p.note,
+                    "cust_category": p.cust_category,
                 }
             )
 

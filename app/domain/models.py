@@ -6,9 +6,13 @@ from enum import Enum
 
 class PaymentSource(Enum):
     ALIPAY = "Alipay"
-    WECHAT = "WeChat Pay"
+    WECHAT = "WeChat"
     OTHER = "Other"
 
+class PaymentType(Enum):
+    INCOME = "income"
+    EXPENSE = "expense"
+    NONE = "none"
 
 @dataclass
 class Payment:
@@ -17,9 +21,11 @@ class Payment:
     amount: float
     currency: str
     merchant: str
-    category: str
+    auto_category: str
     source: PaymentSource
+    type: PaymentType = PaymentType.NONE
     note: str = ""
+    cust_category: str = ""
 
     def __post_init__(self):
         # Basic validation

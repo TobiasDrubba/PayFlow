@@ -2,7 +2,7 @@
 import csv
 from datetime import datetime
 from typing import List
-from app.domain.models import Payment, PaymentSource
+from app.domain.models import Payment, PaymentSource, PaymentType
 
 # 🔧 Define your column numbers here (0-based index)
 DATE_COL = 0           # e.g., "2025-09-22 12:58:10"
@@ -10,7 +10,8 @@ MERCHANT_COL = 2       # e.g., "Merchant Name"
 DETAILS_COL = 4        # (Optional) description column, could be used as note
 TRANSACTION_ID_COL = 9  # example index for transaction ID
 AMOUNT_COL = 6         # e.g., "5.40"
-CATEGORY_COL = 1       # (Optional) 收/支 (income/expense)
+CATEGORY_COL = 1       # (Optional)
+TYP_COL = 5  # 收/支 (income/expense)
 
 def parse_alipay_file(filepath: str) -> List[Payment]:
     """
@@ -33,14 +34,27 @@ def parse_alipay_file(filepath: str) -> List[Payment]:
         if len(row) <= max(DATE_COL, AMOUNT_COL, MERCHANT_COL, TRANSACTION_ID_COL):
             continue  # skip malformed rows
         try:
+            amount = float(row[AMOUNT_COL])
+            if amount == 256:
+                print("tmp")
+            raw_cat = row[TYP_COL].strip().lower() if len(row) > TYP_COL else ""
+            if "income" in raw_cat or "收入" in raw_cat:
+                p_type = PaymentType.INCOME
+            elif "expense" in raw_cat or "支出" in raw_cat:
+                p_type = PaymentType.EXPENSE
+            else:
+                # Fallback: infer from sign if category not present
+                p_type = PaymentType.NONE
+
             payment = Payment(
                 id=row[TRANSACTION_ID_COL],
                 date=datetime.strptime(row[DATE_COL], "%Y-%m-%d %H:%M:%S"),
-                amount=float(row[AMOUNT_COL]),
+                amount=amount,
                 currency="CNY",
                 merchant=row[MERCHANT_COL],
-                category=row[CATEGORY_COL] if len(row) > CATEGORY_COL else "Uncategorized",
+                auto_category=row[CATEGORY_COL] if len(row) > CATEGORY_COL else "Uncategorized",
                 source=PaymentSource.ALIPAY,
+                type=p_type,
                 note=row[DETAILS_COL] if len(row) > DETAILS_COL else ""
             )
             payments.append(payment)

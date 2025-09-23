@@ -1,5 +1,4 @@
 # app/presentation/api.py
-import os
 from datetime import datetime
 from enum import Enum
 from typing import List
@@ -18,9 +17,11 @@ class PaymentResponse(BaseModel):
     amount: float
     currency: str
     merchant: str
-    category: str
+    auto_category: str
     source: str
+    type: str
     note: str = ""
+    cust_category: str = ""
 
     @staticmethod
     def from_domain(p: Payment) -> "PaymentResponse":
@@ -30,9 +31,11 @@ class PaymentResponse(BaseModel):
             amount=p.amount,
             currency=p.currency,
             merchant=p.merchant,
-            category=p.category,
+            auto_category=p.auto_category,
             source=p.source.value if isinstance(p.source, Enum) else str(p.source),
+            type=p.type.value,
             note=p.note or "",
+            cust_category=p.cust_category,
         )
 
 
@@ -77,7 +80,7 @@ def payments_table():
         <input
           id="search"
           type="text"
-          placeholder="Search by merchant, category, note, or currency..."
+          placeholder="Search by merchant, auto category, type, note, currency, source, or id..."
           class="w-full sm:w-80 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <div class="text-sm text-gray-500">
@@ -93,9 +96,11 @@ def payments_table():
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sortable" data-key="amount">Amount</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Currency</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sortable" data-key="merchant">Merchant</th>
-              <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sortable" data-key="category">Category</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sortable" data-key="auto_category">Auto Category</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sortable" data-key="type">Type</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Source</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Note</th>
+              <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider sortable" data-key="cust_category">Custom Category</th>
               <th class="px-3 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">ID</th>
             </tr>
           </thead>
@@ -143,7 +148,7 @@ def payments_table():
         violet: 'bg-violet-100 text-violet-800',
       };
       const cls = colors[color] || colors.gray;
-      return '<span class="badge ' + cls + '">' + text + '</span>';
+      return '<span class="badge ' + cls + '">' + (text || '—') + '</span>';
     }
 
     function categoryColor(cat) {
@@ -152,6 +157,13 @@ def payments_table():
       if (key.includes('expense') || key.includes('支')) return 'rose';
       if (key.includes('transfer')) return 'amber';
       return 'blue';
+    }
+
+    function typeColor(t) {
+      const key = (t || '').toLowerCase();
+      if (key === 'income') return 'emerald';
+      if (key === 'expense') return 'rose';
+      return 'gray';
     }
 
     function sourceColor(src) {
@@ -171,9 +183,11 @@ def payments_table():
             </td>
             <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${p.currency || ''}</td>
             <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${p.merchant || ''}</td>
-            <td class="px-3 py-2 whitespace-nowrap text-sm">${badge(categoryColor(p.category), p.category || '—')}</td>
+            <td class="px-3 py-2 whitespace-nowrap text-sm">${badge(categoryColor(p.auto_category), p.auto_category)}</td>
+            <td class="px-3 py-2 whitespace-nowrap text-sm">${badge(typeColor(p.type), p.type)}</td>
             <td class="px-3 py-2 whitespace-nowrap text-sm">${badge(sourceColor(p.source), p.source || '—')}</td>
             <td class="px-3 py-2 text-sm text-gray-700 max-w-xs truncate" title="${(p.note || '').replace(/"/g, '&quot;')}">${p.note || ''}</td>
+            <td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${p.cust_category || ''}</td>
             <td class="px-3 py-2 text-xs text-gray-500">${p.id || ''}</td>
           </tr>
         `;
@@ -189,7 +203,7 @@ def payments_table():
       } else {
         state.filtered = state.data.filter(p => {
           return [
-            p.merchant, p.category, p.note, p.currency, p.source, p.id
+            p.merchant, p.auto_category, p.type, p.cust_category, p.note, p.currency, p.source, p.id
           ].some(v => (v || '').toLowerCase().includes(q));
         });
       }
