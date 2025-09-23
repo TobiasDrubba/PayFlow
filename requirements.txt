@@ -2,3 +2,4 @@ fastapi
 pydantic
 python-dotenv
 openpyxl
+uvicorn[standard]

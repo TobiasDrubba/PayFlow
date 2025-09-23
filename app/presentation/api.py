@@ -6,6 +6,7 @@ from typing import List
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.domain.models import Payment
 from app.domain.services import list_payments
@@ -41,6 +42,20 @@ class PaymentResponse(BaseModel):
 
 app = FastAPI(title="Payment API", version="1.0.0")
 
+
+# CORS config
+origins = [
+    "http://localhost:3000",  # React dev server
+    "http://127.0.0.1:3000",  # sometimes needed for localhost variants
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/payments", response_model=List[PaymentResponse])
 def get_all_payments_endpoint() -> List[PaymentResponse]:
