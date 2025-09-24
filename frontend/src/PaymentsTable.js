@@ -39,7 +39,7 @@ export default function PaymentsTable() {
     () =>
       payments.reduce((sum, p) => {
         const t = p.type?.toLowerCase();
-        const sign = t === "income" || !t ? 1 : -1;
+        const sign = (t === "income" || t === "none") || !t ? 1 : -1;
         return sum + sign * (Math.abs(p.amount) || 0);
       }, 0),
     [payments]
@@ -57,7 +57,7 @@ export default function PaymentsTable() {
         )
         .reduce((sum, p) => {
           const t = p.type?.toLowerCase();
-          const sign = t === "income" || !t ? 1 : -1;
+          const sign = (t === "income" || t === "none") || !t ? 1 : -1;
           return sum + sign * (Math.abs(p.amount) || 0);
         }, 0),
     [payments, now]
@@ -74,7 +74,7 @@ export default function PaymentsTable() {
       )
       .reduce((sum, p) => {
         const t = p.type?.toLowerCase();
-        const sign = t === "income" || !t ? 1 : -1;
+        const sign = (t === "income" || t === "none") || !t ? 1 : -1;
         return sum + sign * (Math.abs(p.amount) || 0);
       }, 0);
   }, [payments, dateRange]);
@@ -313,7 +313,7 @@ export default function PaymentsTable() {
               >
                 {filteredPayments.map((p) => {
                   const t = p.type?.toLowerCase();
-                  const isNegative = !(t === "income" || !t);
+                  const isNegative = !((t === "income" || t === "none") || !t);
                   return (
                     <TableRow key={p.id} hover>
                       <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -345,7 +345,7 @@ export default function PaymentsTable() {
                         align="right"
                         sx={{ fontWeight: 800, color: isNegative ? "error.main" : "success.main" }}
                       >
-                        {(t === "income" || !t) ? "+" : "-"}
+                        {((t === "income" || t === "none") || !t) ? "+" : "-"}
                          {Math.abs(p.amount).toFixed(2)}
                       </TableCell>
                       <TableCell>
