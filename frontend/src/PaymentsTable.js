@@ -36,13 +36,18 @@ export default function PaymentsTable() {
 
   // Calculate sums
   const totalSum = useMemo(
-    () => payments.reduce((sum, p) => sum + (p.amount || 0), 0),
+    () =>
+      payments.reduce((sum, p) => {
+        const t = p.type?.toLowerCase();
+        const sign = t === "income" || !t ? 1 : -1;
+        return sum + sign * (Math.abs(p.amount) || 0);
+      }, 0),
     [payments]
   );
 
   const now = new Date();
   const monthlySum = useMemo(
-    () =>
+() =>
       payments
         .filter(p =>
           isWithinInterval(new Date(p.date), {
@@ -50,7 +55,11 @@ export default function PaymentsTable() {
             end: endOfMonth(now),
           })
         )
-        .reduce((sum, p) => sum + (p.amount || 0), 0),
+        .reduce((sum, p) => {
+          const t = p.type?.toLowerCase();
+          const sign = t === "income" || !t ? 1 : -1;
+          return sum + sign * (Math.abs(p.amount) || 0);
+        }, 0),
     [payments, now]
   );
 
@@ -63,7 +72,11 @@ export default function PaymentsTable() {
           end: dateRange[1],
         })
       )
-      .reduce((sum, p) => sum + (p.amount || 0), 0);
+      .reduce((sum, p) => {
+        const t = p.type?.toLowerCase();
+        const sign = t === "income" || !t ? 1 : -1;
+        return sum + sign * (Math.abs(p.amount) || 0);
+      }, 0);
   }, [payments, dateRange]);
 
   if (loading)
@@ -299,7 +312,8 @@ export default function PaymentsTable() {
                 }}
               >
                 {filteredPayments.map((p) => {
-                  const isDebit = p.type?.toLowerCase() === "debit";
+                  const t = p.type?.toLowerCase();
+                  const isNegative = !(t === "income" || !t);
                   return (
                     <TableRow key={p.id} hover>
                       <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -327,8 +341,12 @@ export default function PaymentsTable() {
                           </Box>
                         </Stack>
                       </TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 800, color: isDebit ? "error.main" : "success.main" }}>
-                        {isDebit ? "-" : "+"}{Math.abs(p.amount).toFixed(2)}
+                      <TableCell
+                        align="right"
+                        sx={{ fontWeight: 800, color: isNegative ? "error.main" : "success.main" }}
+                      >
+                        {(t === "income" || !t) ? "+" : "-"}
+                         {Math.abs(p.amount).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Chip
