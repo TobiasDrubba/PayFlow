@@ -35,16 +35,18 @@ def parse_alipay_file(filepath: str) -> List[Payment]:
             continue  # skip malformed rows
         try:
             amount = float(row[AMOUNT_COL])
-            if amount == 256:
-                print("tmp")
+            cat = row[CATEGORY_COL] if len(row) > CATEGORY_COL else "Uncategorized"
             raw_cat = row[TYP_COL].strip().lower() if len(row) > TYP_COL else ""
             if "income" in raw_cat or "收入" in raw_cat:
                 p_type = PaymentType.INCOME
             elif "expense" in raw_cat or "支出" in raw_cat:
                 p_type = PaymentType.EXPENSE
             else:
-                # Fallback: infer from sign if category not present
-                p_type = PaymentType.NONE
+                # Check if transaction is abort or refund
+                if "refund" in cat or "退款" in cat:
+                    p_type = PaymentType.REFUND
+                else:
+                    p_type = PaymentType.ABORT
 
             payment = Payment(
                 id=row[TRANSACTION_ID_COL],
@@ -52,7 +54,7 @@ def parse_alipay_file(filepath: str) -> List[Payment]:
                 amount=amount,
                 currency="CNY",
                 merchant=row[MERCHANT_COL],
-                auto_category=row[CATEGORY_COL] if len(row) > CATEGORY_COL else "Uncategorized",
+                auto_category=cat,
                 source=PaymentSource.ALIPAY,
                 type=p_type,
                 note=row[DETAILS_COL] if len(row) > DETAILS_COL else ""

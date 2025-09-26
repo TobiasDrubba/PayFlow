@@ -12,6 +12,8 @@ class PaymentSource(Enum):
 class PaymentType(Enum):
     INCOME = "income"
     EXPENSE = "expense"
+    ABORT = "abort"
+    REFUND = "refund"
     NONE = "none"
 
 @dataclass

@@ -34,50 +34,64 @@ export default function PaymentsTable() {
     );
   }, [payments, search]);
 
-  // Calculate sums
-  const totalSum = useMemo(
-    () =>
-      payments.reduce((sum, p) => {
-        const t = p.type?.toLowerCase();
-        const sign = (t === "income" || t === "none") || !t ? 1 : -1;
-        return sum + sign * (Math.abs(p.amount) || 0);
-      }, 0),
-    [payments]
-  );
+    // --- Sum Calculations ---
+    const isPositive = (t) => t === "income" || t === "refund";
+    const isAbort = (t) => t === "abort";
 
+    const totalSum = useMemo(
+      () =>
+        payments.reduce((sum, p) => {
+          const t = p.type?.toLowerCase();
+          if (isAbort(t)) return sum;
+          const sign = isPositive(t) ? 1 : -1;
+          return sum + sign * (Math.abs(p.amount) || 0);
+        }, 0),
+      [payments]
+    );
   const now = new Date();
-  const monthlySum = useMemo(
-() =>
-      payments
+    const monthlySum = useMemo(
+      () =>
+        payments
+          .filter(p =>
+            !isAbort(p.type?.toLowerCase()) &&
+            isWithinInterval(new Date(p.date), {
+              start: startOfMonth(now),
+              end: endOfMonth(now),
+            })
+          )
+          .reduce((sum, p) => {
+            const t = p.type?.toLowerCase();
+            const sign = isPositive(t) ? 1 : -1;
+            return sum + sign * (Math.abs(p.amount) || 0);
+          }, 0),
+      [payments, now]
+    );
+
+    const customSum = useMemo(() => {
+      if (!dateRange[0] || !dateRange[1]) return 0;
+      return payments
         .filter(p =>
+          !isAbort(p.type?.toLowerCase()) &&
           isWithinInterval(new Date(p.date), {
-            start: startOfMonth(now),
-            end: endOfMonth(now),
+            start: dateRange[0],
+            end: dateRange[1],
           })
         )
         .reduce((sum, p) => {
           const t = p.type?.toLowerCase();
-          const sign = (t === "income" || t === "none") || !t ? 1 : -1;
+          const sign = isPositive(t) ? 1 : -1;
           return sum + sign * (Math.abs(p.amount) || 0);
-        }, 0),
-    [payments, now]
-  );
+        }, 0);
+    }, [payments, dateRange]);
 
-  const customSum = useMemo(() => {
-    if (!dateRange[0] || !dateRange[1]) return 0;
-    return payments
-      .filter(p =>
-        isWithinInterval(new Date(p.date), {
-          start: dateRange[0],
-          end: dateRange[1],
-        })
-      )
-      .reduce((sum, p) => {
-        const t = p.type?.toLowerCase();
-        const sign = (t === "income" || t === "none") || !t ? 1 : -1;
-        return sum + sign * (Math.abs(p.amount) || 0);
-      }, 0);
-  }, [payments, dateRange]);
+    // --- Visuals for Table ---
+    const typeColor = (t) => {
+      const type = t?.toLowerCase();
+      if (type === "abort") return "default"; // grey
+      if (isPositive(type)) return "success";
+      return "error";
+    };
+
 
   if (loading)
     return (
@@ -100,8 +114,6 @@ export default function PaymentsTable() {
       default: return "default";
     }
   };
-
-  const typeColor = (t) => (t?.toLowerCase() === "debit" ? "error" : "success");
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -313,7 +325,9 @@ export default function PaymentsTable() {
               >
                 {filteredPayments.map((p) => {
                   const t = p.type?.toLowerCase();
-                  const isNegative = !((t === "income" || t === "none") || !t);
+                  const isAbortType = isAbort(t);
+                  const isPos = isPositive(t);
+                  const isNeg = !isAbortType && !isPos;
                   return (
                     <TableRow key={p.id} hover>
                       <TableCell sx={{ whiteSpace: "nowrap" }}>
@@ -343,10 +357,23 @@ export default function PaymentsTable() {
                       </TableCell>
                       <TableCell
                         align="right"
-                        sx={{ fontWeight: 800, color: isNegative ? "error.main" : "success.main" }}
+                        sx={{
+                          fontWeight: 800,
+                          color: isAbortType
+                            ? "text.secondary"
+                            : isNeg
+                            ? "error.main"
+                            : "success.main",
+                        }}
                       >
-                        {((t === "income" || t === "none") || !t) ? "+" : "-"}
-                         {Math.abs(p.amount).toFixed(2)}
+                        {isAbortType
+                          ? "—"
+                          : isPos
+                          ? "+"
+                          : "-"}
+                        {isAbortType
+                          ? ""
+                          : Math.abs(p.amount).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -379,7 +406,12 @@ export default function PaymentsTable() {
                           size="small"
                           label={p.type}
                           color={typeColor(p.type)}
-                          sx={{ borderRadius: 1.5, fontWeight: 700 }}
+                          sx={{
+                            borderRadius: 1.5,
+                            fontWeight: 700,
+                            bgcolor: t === "abort" ? "grey.300" : undefined,
+                            color: t === "abort" ? "text.secondary" : undefined,
+                          }}
                         />
                       </TableCell>
                       <TableCell sx={{ maxWidth: 260 }}>

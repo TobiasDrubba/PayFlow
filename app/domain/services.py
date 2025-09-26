@@ -41,3 +41,13 @@ def list_payments() -> List[Payment]:
     """
     return get_all_payments()
 
+if __name__ == '__main__':
+    # get file path from options
+    import sys
+    if len(sys.argv) < 3:
+        print("Usage: python -m app.data.services <filepathAlipay> <filepathWeChat>")
+    else:
+        filepathAli = sys.argv[1]
+        filepathWe = sys.argv[2]
+        import_alipay_payments(filepathAli)
+        import_wechat_payments(filepathWe)
