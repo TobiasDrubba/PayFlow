@@ -1,5 +1,9 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { fetchPayments } from "./api";
+
+import { fetchCategories, addCategory, fetchPayments } from "./api";
+import { Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import { useSnackbar } from "notistack"; // optional for feedback
 import {
   Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Paper, CircularProgress, Typography, TextField,
@@ -17,6 +21,75 @@ export default function PaymentsTable() {
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState([null, null]);
+      const [categories, setCategories] = useState([]);
+    const [addCatOpen, setAddCatOpen] = useState(false);
+    const [newCat, setNewCat] = useState("");
+    const { enqueueSnackbar } = useSnackbar(); // optional
+
+// Fetch categories on mount
+useEffect(() => {
+  fetchCategories()
+    .then(setCategories)
+    .catch(() => setCategories([]));
+}, []);
+
+// Add new category
+const handleAddCategory = () => {
+  addCategory(newCat)
+    .then(cat => {
+      setCategories(prev => [...prev, cat]);
+      setAddCatOpen(false);
+      setNewCat("");
+      enqueueSnackbar && enqueueSnackbar("Category added", { variant: "success" });
+    })
+    .catch(() => {
+      enqueueSnackbar && enqueueSnackbar("Failed to add category", { variant: "error" });
+    });
+};
+    // Helper to check if all merchant's transactions have the same category
+    const allMerchantSameCategory = (merchant, currentCat) => {
+      const txs = payments.filter(p => p.merchant === merchant);
+      return txs.length > 1 && txs.every(p => p.cust_category === currentCat);
+    };
+
+    // Update category (with prompt)
+    const handleCategoryChange = (payment, newCat) => {
+      if (
+        allMerchantSameCategory(payment.merchant, payment.cust_category)
+      ) {
+        if (
+          window.confirm(
+            "Change all categories of that merchant's transaction?"
+          )
+        ) {
+          // Bulk update
+          fetch(`/payments/${payment.id}/category`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cust_category: newCat, all_for_merchant: true }),
+          }).then(() => {
+            setPayments(payments =>
+              payments.map(p =>
+                p.merchant === payment.merchant ? { ...p, cust_category: newCat } : p
+              )
+            );
+          });
+          return;
+        }
+      }
+      // Single update
+      fetch(`/payments/${payment.id}/category`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cust_category: newCat, all_for_merchant: false }),
+      }).then(() => {
+        setPayments(payments =>
+          payments.map(p =>
+            p.id === payment.id ? { ...p, cust_category: newCat } : p
+          )
+        );
+      });
+    };
   // Column visibility + order
   const allColumns = useMemo(() => ([
     { id: "date", label: "Date" },
@@ -177,6 +250,32 @@ export default function PaymentsTable() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <Dialog open={addCatOpen} onClose={() => setAddCatOpen(false)}>
+  <DialogTitle>Add New Category</DialogTitle>
+  <DialogContent>
+    <TextField
+      autoFocus
+      margin="dense"
+      label="Category Name"
+      fullWidth
+      value={newCat}
+      onChange={e => setNewCat(e.target.value)}
+    />
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setAddCatOpen(false)}>Cancel</Button>
+    <Button
+      onClick={() => {
+        handleAddCategory();
+      }}
+      disabled={!newCat.trim()}
+      variant="contained"
+      startIcon={<AddIcon />}
+    >
+      Add
+    </Button>
+  </DialogActions>
+</Dialog>
       <Box
         sx={{
           maxWidth: "1200px",
@@ -539,14 +638,27 @@ export default function PaymentsTable() {
                             case "cust_category":
                               return (
                                 <TableCell key={`${p.id}-cust_category`} sx={{ maxWidth: 200 }}>
-                                  <Chip
+                                  <Autocomplete
                                     size="small"
-                                    label={p.cust_category || "—"}
-                                    variant="outlined"
-                                    sx={{ borderRadius: 1.5 }}
+                                    value={p.cust_category || ""}
+                                    options={categories}
+                                    freeSolo
+                                    onChange={(_, value) => {
+                                      if (value && !categories.includes(value)) {
+                                        setNewCat(value);
+                                        setAddCatOpen(true);
+                                      } else {
+                                        handleCategoryChange(p, value || "");
+                                      }
+                                    }}
+                                    renderInput={params => (
+                                      <TextField {...params} variant="standard" placeholder="—" />
+                                    )}
+                                    sx={{ minWidth: 120 }}
                                   />
                                 </TableCell>
                               );
+
                             default:
                               return null;
                           }

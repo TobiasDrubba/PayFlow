@@ -10,6 +10,24 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.domain.models import Payment
 from app.domain.services import list_payments
+# --- Add these imports ---
+from app.domain.services import (
+    list_categories,
+    add_category,
+    update_payment_category,
+    update_merchant_categories,
+)
+
+# --- Category models ---
+class CategoryRequest(BaseModel):
+    name: str
+
+class UpdateCategoryRequest(BaseModel):
+    cust_category: str
+    all_for_merchant: bool = False
+
+# --- Endpoints ---
+
 
 
 class PaymentResponse(BaseModel):
@@ -64,6 +82,23 @@ def get_all_payments_endpoint() -> List[PaymentResponse]:
     """
     payments = list_payments()
     return [PaymentResponse.from_domain(p) for p in payments]
+
+@app.get("/categories", response_model=List[str])
+def get_categories():
+    return list_categories()
+
+@app.post("/categories", response_model=str)
+def create_category(req: CategoryRequest):
+    return add_category(req.name)
+
+@app.patch("/payments/{payment_id}/category")
+def update_payment_cust_category(payment_id: str, req: UpdateCategoryRequest):
+    if req.all_for_merchant:
+        updated = update_merchant_categories(payment_id, req.cust_category)
+        return {"updated": updated}
+    else:
+        update_payment_category(payment_id, req.cust_category)
+        return {"updated": 1}
 
 @app.get("/payments/table", response_class=HTMLResponse)
 def payments_table():
