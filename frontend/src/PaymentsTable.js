@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 
-import { fetchCategories, addCategory, fetchPayments } from "./api";
+import { fetchCategories, addCategory, fetchPayments, updatePaymentCategory } from "./api";
 import { Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import { useSnackbar } from "notistack"; // optional for feedback
@@ -63,11 +63,7 @@ const handleAddCategory = () => {
           )
         ) {
           // Bulk update
-          fetch(`/payments/${payment.id}/category`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ cust_category: newCat, all_for_merchant: true }),
-          }).then(() => {
+          updatePaymentCategory(payment.id, newCat, true).then(() => {
             setPayments(payments =>
               payments.map(p =>
                 p.merchant === payment.merchant ? { ...p, cust_category: newCat } : p
@@ -78,11 +74,7 @@ const handleAddCategory = () => {
         }
       }
       // Single update
-      fetch(`/payments/${payment.id}/category`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cust_category: newCat, all_for_merchant: false }),
-      }).then(() => {
+      updatePaymentCategory(payment.id, newCat, false).then(() => {
         setPayments(payments =>
           payments.map(p =>
             p.id === payment.id ? { ...p, cust_category: newCat } : p

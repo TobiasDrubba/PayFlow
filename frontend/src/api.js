@@ -21,3 +21,13 @@ export async function addCategory(name) {
   if (!response.ok) throw new Error("Failed to add category");
   return response.json();
 }
+
+export async function updatePaymentCategory(paymentId, custCategory, allForMerchant = false) {
+  const response = await fetch(`${API_URL}/payments/${paymentId}/category`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cust_category: custCategory, all_for_merchant: allForMerchant }),
+  });
+  if (!response.ok) throw new Error("Failed to update payment category");
+  return response.json();
+}
