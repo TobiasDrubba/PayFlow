@@ -1,124 +1,57 @@
-import React, { useEffect, useState, useMemo } from "react";
-
-import { fetchCategories, addCategory, fetchPayments, updatePaymentCategory } from "./api";
-import { Autocomplete, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import { useSnackbar } from "notistack"; // optional for feedback
-import {
-  Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, Paper, CircularProgress, Typography, TextField,
-  Box, Grid, Card, CardContent, Chip, Avatar, Stack, Tooltip, Divider,
-  Menu, MenuItem, Checkbox, ListItemText, Button
-} from "@mui/material";
-import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
-import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
+import React, { useState, useMemo } from "react";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
-import { format, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import {
+  Box,
+  Typography,
+  Stack,
+  CircularProgress,
+  Paper,
+  Chip,
+  Divider,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+} from "@mui/material";
+
+// Custom hooks
+import { usePayments, usePaymentSums } from "./hooks/usePayments";
+import { useCategories } from "./hooks/useCategories";
+import { useTableColumns } from "./hooks/useTableColumns";
+
+// Components
+import AddCategoryDialog from "./components/AddCategoryDialog";
+import SummaryCards from "./components/SummaryCards";
+import TableControls from "./components/TableControls";
+import PaymentTableRow from "./components/PaymentTableRow";
+
 export default function PaymentsTable() {
-  const [payments, setPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { payments, setPayments, loading, error } = usePayments();
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState([null, null]);
-      const [categories, setCategories] = useState([]);
-    const [addCatOpen, setAddCatOpen] = useState(false);
-    const [newCat, setNewCat] = useState("");
-    const { enqueueSnackbar } = useSnackbar(); // optional
 
-// Fetch categories on mount
-useEffect(() => {
-  fetchCategories()
-    .then(setCategories)
-    .catch(() => setCategories([]));
-}, []);
+  const {
+    categories,
+    addCatOpen,
+    setAddCatOpen,
+    newCat,
+    setNewCat,
+    handleAddCategory,
+    handleCategoryChange
+  } = useCategories();
 
-// Add new category
-const handleAddCategory = () => {
-  addCategory(newCat)
-    .then(cat => {
-      setCategories(prev => [...prev, cat]);
-      setAddCatOpen(false);
-      setNewCat("");
-      enqueueSnackbar && enqueueSnackbar("Category added", { variant: "success" });
-    })
-    .catch(() => {
-      enqueueSnackbar && enqueueSnackbar("Failed to add category", { variant: "error" });
-    });
-};
-    // Helper to check if all merchant's transactions have the same category
-    const allMerchantSameCategory = (merchant, currentCat) => {
-      const txs = payments.filter(p => p.merchant === merchant);
-      return txs.length > 1 && txs.every(p => p.cust_category === currentCat);
-    };
+  const {
+    orderedColumns,
+    visibleColumns,
+    toggleColumn,
+    onDragEnd
+  } = useTableColumns();
 
-    // Update category (with prompt)
-    const handleCategoryChange = (payment, newCat) => {
-      if (
-        allMerchantSameCategory(payment.merchant, payment.cust_category)
-      ) {
-        if (
-          window.confirm(
-            "Change all categories of that merchant's transaction?"
-          )
-        ) {
-          // Bulk update
-          updatePaymentCategory(payment.id, newCat, true).then(() => {
-            setPayments(payments =>
-              payments.map(p =>
-                p.merchant === payment.merchant ? { ...p, cust_category: newCat } : p
-              )
-            );
-          });
-          return;
-        }
-      }
-      // Single update
-      updatePaymentCategory(payment.id, newCat, false).then(() => {
-        setPayments(payments =>
-          payments.map(p =>
-            p.id === payment.id ? { ...p, cust_category: newCat } : p
-          )
-        );
-      });
-    };
-  // Column visibility + order
-  const allColumns = useMemo(() => ([
-    { id: "date", label: "Date" },
-    { id: "amount", label: "Amount", align: "right" },
-    { id: "currency", label: "Currency" },
-    { id: "merchant", label: "Merchant" },
-    { id: "auto_category", label: "Auto Category" },
-    { id: "source", label: "Source" },
-    { id: "type", label: "Type" },
-    { id: "note", label: "Note" },
-    { id: "cust_category", label: "Custom Category" },
-  ]), []);
-  const [columnOrder, setColumnOrder] = useState(() => {
-    const saved = localStorage.getItem("paymentsTable.columnOrder");
-    return saved ? JSON.parse(saved) : allColumns.map(c => c.id);
-  });
-  const [visibleColumns, setVisibleColumns] = useState(() => {
-    const saved = localStorage.getItem("paymentsTable.visibleColumns");
-    return new Set(saved ? JSON.parse(saved) : allColumns.map(c => c.id));
-  });
-  useEffect(() => {
-    localStorage.setItem("paymentsTable.columnOrder", JSON.stringify(columnOrder));
-  }, [columnOrder]);
-  useEffect(() => {
-    localStorage.setItem("paymentsTable.visibleColumns", JSON.stringify(Array.from(visibleColumns)));
-  }, [visibleColumns]);
-  const orderedColumns = useMemo(
-    () => columnOrder.map(id => allColumns.find(c => c.id === id)).filter(Boolean),
-    [columnOrder, allColumns]
-  );
-
-  useEffect(() => {
-    fetchPayments()
-      .then(data => setPayments(data))
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
-  }, []);
+  const { totalSum, monthlySum, customSum, now } = usePaymentSums(payments, dateRange);
 
   // Filter payments by search term
   const filteredPayments = useMemo(() => {
@@ -131,94 +64,17 @@ const handleAddCategory = () => {
     );
   }, [payments, search]);
 
-    // --- Sum Calculations ---
-    const isPositive = (t) => t === "income" || t === "refund";
-    const isAbort = (t) => t === "abort";
-
-    const totalSum = useMemo(
-      () =>
-        payments.reduce((sum, p) => {
-          const t = p.type?.toLowerCase();
-          if (isAbort(t)) return sum;
-          const sign = isPositive(t) ? 1 : -1;
-          return sum + sign * (Math.abs(p.amount) || 0);
-        }, 0),
-      [payments]
-    );
-  const now = useMemo(() => new Date(), []);
-    const monthlySum = useMemo(
-      () =>
-        payments
-          .filter(p =>
-            !isAbort(p.type?.toLowerCase()) &&
-            isWithinInterval(new Date(p.date), {
-              start: startOfMonth(now),
-              end: endOfMonth(now),
-            })
-          )
-          .reduce((sum, p) => {
-            const t = p.type?.toLowerCase();
-            const sign = isPositive(t) ? 1 : -1;
-            return sum + sign * (Math.abs(p.amount) || 0);
-          }, 0),
-      [payments, now]
-    );
-
-    const customSum = useMemo(() => {
-      if (!dateRange[0] || !dateRange[1]) return 0;
-      return payments
-        .filter(p =>
-          !isAbort(p.type?.toLowerCase()) &&
-          isWithinInterval(new Date(p.date), {
-            start: dateRange[0],
-            end: dateRange[1],
-          })
-        )
-        .reduce((sum, p) => {
-          const t = p.type?.toLowerCase();
-          const sign = isPositive(t) ? 1 : -1;
-          return sum + sign * (Math.abs(p.amount) || 0);
-        }, 0);
-    }, [payments, dateRange]);
-
-    // --- Visuals for Table ---
-    const typeColor = (t) => {
-      const type = t?.toLowerCase();
-      if (type === "abort") return "default"; // grey
-      if (isPositive(type)) return "success";
-      return "error";
-    };
-
-  const [anchorEl, setAnchorEl] = useState(null);
-  const openMenu = Boolean(anchorEl);
-  const handleOpenMenu = (e) => setAnchorEl(e.currentTarget);
-  const handleCloseMenu = () => setAnchorEl(null);
-  const toggleColumn = (id) => {
-    setVisibleColumns(prev => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        // keep at least one column visible
-        if (next.size > 1) next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
-    const srcIdx = result.source.index;
-    const dstIdx = result.destination.index;
-    setColumnOrder(prev => {
-      const next = [...prev];
-      const [moved] = next.splice(srcIdx, 1);
-      next.splice(dstIdx, 0, moved);
-      return next;
-    });
+  // Handle category change with potential new category creation
+  const handleCategoryChangeWithDialog = (payment, value) => {
+    if (value && !categories.includes(value)) {
+      setNewCat(value);
+      setAddCatOpen(true);
+    } else {
+      handleCategoryChange(payment, value, payments, setPayments);
+    }
   };
 
-
-    if (loading)
+  if (loading) {
     return (
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
         <Stack spacing={2} alignItems="center">
@@ -229,45 +85,20 @@ const handleAddCategory = () => {
         </Stack>
       </Box>
     );
-  if (error) return <Typography color="error">{error}</Typography>;
+  }
 
-  const currencyColor = (cur) => {
-    switch (cur) {
-      case "USD": return "primary";
-      case "EUR": return "secondary";
-      case "GBP": return "info";
-      default: return "default";
-    }
-  };
+  if (error) return <Typography color="error">{error}</Typography>;
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <Dialog open={addCatOpen} onClose={() => setAddCatOpen(false)}>
-  <DialogTitle>Add New Category</DialogTitle>
-  <DialogContent>
-    <TextField
-      autoFocus
-      margin="dense"
-      label="Category Name"
-      fullWidth
-      value={newCat}
-      onChange={e => setNewCat(e.target.value)}
-    />
-  </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setAddCatOpen(false)}>Cancel</Button>
-    <Button
-      onClick={() => {
-        handleAddCategory();
-      }}
-      disabled={!newCat.trim()}
-      variant="contained"
-      startIcon={<AddIcon />}
-    >
-      Add
-    </Button>
-  </DialogActions>
-</Dialog>
+      <AddCategoryDialog
+        open={addCatOpen}
+        onClose={() => setAddCatOpen(false)}
+        newCat={newCat}
+        setNewCat={setNewCat}
+        onAdd={handleAddCategory}
+      />
+
       <Box
         sx={{
           maxWidth: "1200px",
@@ -276,6 +107,7 @@ const handleAddCategory = () => {
           fontFamily: `"Inter", "SF Pro Display", "Segoe UI", Roboto, Arial, sans-serif`,
         }}
       >
+        {/* Header */}
         <Box
           sx={{
             mb: 3,
@@ -302,125 +134,27 @@ const handleAddCategory = () => {
             </Typography>
           </Box>
 
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ width: { xs: "100%", md: "auto" } }}>
-            <TextField
-              label="Search payments"
-              variant="outlined"
-              size="medium"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              sx={{
-                minWidth: { xs: "100%", sm: 260 },
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: 2,
-                  bgcolor: "background.paper",
-                },
-              }}
-            />
-            <DateRangePicker
-              value={dateRange}
-              onChange={setDateRange}
-              localeText={{ start: "Start date", end: "End date" }}
-              slotProps={{
-                textField: {
-                  size: "medium",
-                  sx: {
-                    "& .MuiOutlinedInput-root": { borderRadius: 2, bgcolor: "background.paper" },
-                    minWidth: { xs: "100%", sm: 260 },
-                  },
-                },
-              }}
-            />
-            <Button
-              variant="outlined"
-              onClick={handleOpenMenu}
-              sx={{ whiteSpace: "nowrap" }}
-            >
-              Columns
-            </Button>
-            <Menu anchorEl={anchorEl} open={openMenu} onClose={handleCloseMenu}>
-              {orderedColumns.map(col => (
-                <MenuItem key={col.id} onClick={() => toggleColumn(col.id)}>
-                  <Checkbox checked={visibleColumns.has(col.id)} />
-                  <ListItemText primary={col.label} />
-                </MenuItem>
-              ))}
-            </Menu>
-          </Stack>
+          <TableControls
+            search={search}
+            setSearch={setSearch}
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            orderedColumns={orderedColumns}
+            visibleColumns={visibleColumns}
+            toggleColumn={toggleColumn}
+          />
         </Box>
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={4}>
-            <Card
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                p: 0.5,
-                background: "linear-gradient(135deg, #111827, #1f2937)",
-                color: "white",
-              }}
-            >
-              <CardContent sx={{ p: 2.5 }}>
-                <Typography variant="overline" sx={{ opacity: 0.8 }}>
-                  Total Sum
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                  {totalSum.toFixed(2)}
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.8 }}>All time</Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                p: 0.5,
-                background: "linear-gradient(135deg, #0f766e, #14b8a6)",
-                color: "white",
-              }}
-            >
-              <CardContent sx={{ p: 2.5 }}>
-                <Typography variant="overline" sx={{ opacity: 0.9 }}>
-                  This Month
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                  {monthlySum.toFixed(2)}
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                  {format(now, "MMMM yyyy")}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Card
-              elevation={0}
-              sx={{
-                borderRadius: 3,
-                p: 0.5,
-                background: "linear-gradient(135deg, #3730a3, #6366f1)",
-                color: "white",
-              }}
-            >
-              <CardContent sx={{ p: 2.5 }}>
-                <Typography variant="overline" sx={{ opacity: 0.9 }}>
-                  Custom Range
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                  {customSum.toFixed(2)}
-                </Typography>
-                <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                  {dateRange[0] && dateRange[1]
-                    ? `${format(dateRange[0], "MMM d")} – ${format(dateRange[1], "MMM d, yyyy")}`
-                    : "Pick a date range"}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+        {/* Summary Cards */}
+        <SummaryCards
+          totalSum={totalSum}
+          monthlySum={monthlySum}
+          customSum={customSum}
+          now={now}
+          dateRange={dateRange}
+        />
 
+        {/* Table */}
         <Paper
           elevation={0}
           sx={{
@@ -437,8 +171,7 @@ const handleAddCategory = () => {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              background:
-                "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0))",
+              background: "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0))",
             }}
           >
             <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.2 }}>
@@ -453,6 +186,7 @@ const handleAddCategory = () => {
             />
           </Box>
           <Divider />
+
           <TableContainer sx={{ maxHeight: "65vh" }}>
             <DragDropContext onDragEnd={onDragEnd}>
               <Table stickyHeader size="medium" aria-label="payments table">
@@ -499,165 +233,23 @@ const handleAddCategory = () => {
                 <TableBody
                   sx={{
                     "& .MuiTableRow-root:hover": {
-                      background:
-                        "linear-gradient(90deg, rgba(99,102,241,0.06), rgba(99,102,241,0.00))",
+                      background: "linear-gradient(90deg, rgba(99,102,241,0.06), rgba(99,102,241,0.00))",
                     },
                     "& .MuiTableCell-body": {
                       borderBottom: (t) => `1px dashed ${t.palette.divider}`,
                     },
                   }}
                 >
-                  {filteredPayments.map((p) => {
-                    const t = p.type?.toLowerCase();
-                    const isAbortType = isAbort(t);
-                    const isPos = isPositive(t);
-                    const isNeg = !isAbortType && !isPos;
-                    return (
-                      <TableRow key={p.id} hover>
-                        {orderedColumns.map(col => {
-                          if (!visibleColumns.has(col.id)) return null;
-                          switch (col.id) {
-                            case "date":
-                              return (
-                                <TableCell key={`${p.id}-date`} sx={{ whiteSpace: "nowrap" }}>
-                                  <Stack direction="row" spacing={1} alignItems="center">
-                                    <Avatar
-                                      variant="rounded"
-                                      sx={{
-                                        width: 28,
-                                        height: 28,
-                                        bgcolor: "primary.main",
-                                        color: "primary.contrastText",
-                                        fontSize: 14,
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      {format(new Date(p.date), "dd")}
-                                    </Avatar>
-                                    <Box>
-                                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                                        {format(new Date(p.date), "MMM yyyy")}
-                                      </Typography>
-                                      <Typography variant="caption" color="text.secondary">
-                                        {format(new Date(p.date), "EEE")}
-                                      </Typography>
-                                    </Box>
-                                  </Stack>
-                                </TableCell>
-                              );
-                            case "amount":
-                              return (
-                                <TableCell
-                                  key={`${p.id}-amount`}
-                                  align="right"
-                                  sx={{
-                                    fontWeight: 800,
-                                    color: isAbortType
-                                      ? "text.secondary"
-                                      : isNeg
-                                      ? "error.main"
-                                      : "success.main",
-                                  }}
-                                >
-                                  {isAbortType ? "—" : isPos ? "+" : "-"}
-                                  {isAbortType ? "" : Math.abs(p.amount).toFixed(2)}
-                                </TableCell>
-                              );
-                            case "currency":
-                              return (
-                                <TableCell key={`${p.id}-currency`}>
-                                  <Chip
-                                    size="small"
-                                    label={p.currency}
-                                    color={currencyColor(p.currency)}
-                                    variant="outlined"
-                                    sx={{ borderRadius: 1.5, fontWeight: 700 }}
-                                  />
-                                </TableCell>
-                              );
-                            case "merchant":
-                              return (
-                                <TableCell key={`${p.id}-merchant`} sx={{ maxWidth: 220 }}>
-                                  <Tooltip title={p.merchant || ""}>
-                                    <Typography noWrap>{p.merchant}</Typography>
-                                  </Tooltip>
-                                </TableCell>
-                              );
-                            case "auto_category":
-                              return (
-                                <TableCell key={`${p.id}-auto_category`} sx={{ maxWidth: 200 }}>
-                                  <Chip
-                                    size="small"
-                                    label={p.auto_category || "—"}
-                                    sx={{ borderRadius: 1.5, bgcolor: "action.selected" }}
-                                  />
-                                </TableCell>
-                              );
-                            case "source":
-                              return (
-                                <TableCell key={`${p.id}-source`}>
-                                  <Typography variant="body2" color="text.secondary">
-                                    {p.source}
-                                  </Typography>
-                                </TableCell>
-                              );
-                            case "type":
-                              return (
-                                <TableCell key={`${p.id}-type`}>
-                                  <Chip
-                                    size="small"
-                                    label={p.type}
-                                    color={typeColor(p.type)}
-                                    sx={{
-                                      borderRadius: 1.5,
-                                      fontWeight: 700,
-                                      bgcolor: t === "abort" ? "grey.300" : undefined,
-                                      color: t === "abort" ? "text.secondary" : undefined,
-                                    }}
-                                  />
-                                </TableCell>
-                              );
-                            case "note":
-                              return (
-                                <TableCell key={`${p.id}-note`} sx={{ maxWidth: 260 }}>
-                                  <Tooltip title={p.note || ""}>
-                                    <Typography noWrap color="text.secondary">
-                                      {p.note || "—"}
-                                    </Typography>
-                                  </Tooltip>
-                                </TableCell>
-                              );
-                            case "cust_category":
-                              return (
-                                <TableCell key={`${p.id}-cust_category`} sx={{ maxWidth: 200 }}>
-                                  <Autocomplete
-                                    size="small"
-                                    value={p.cust_category || ""}
-                                    options={categories}
-                                    freeSolo
-                                    onChange={(_, value) => {
-                                      if (value && !categories.includes(value)) {
-                                        setNewCat(value);
-                                        setAddCatOpen(true);
-                                      } else {
-                                        handleCategoryChange(p, value || "");
-                                      }
-                                    }}
-                                    renderInput={params => (
-                                      <TextField {...params} variant="standard" placeholder="—" />
-                                    )}
-                                    sx={{ minWidth: 120 }}
-                                  />
-                                </TableCell>
-                              );
-
-                            default:
-                              return null;
-                          }
-                        })}
-                      </TableRow>
-                    );
-                  })}
+                  {filteredPayments.map((payment) => (
+                    <PaymentTableRow
+                      key={payment.id}
+                      payment={payment}
+                      orderedColumns={orderedColumns}
+                      visibleColumns={visibleColumns}
+                      categories={categories}
+                      onCategoryChange={handleCategoryChangeWithDialog}
+                    />
+                  ))}
                   {filteredPayments.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={visibleColumns.size || 1} align="center" sx={{ py: 6, color: "text.secondary" }}>
