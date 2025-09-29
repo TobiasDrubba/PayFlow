@@ -5,12 +5,15 @@ from datetime import datetime
 from typing import List
 from dotenv import load_dotenv
 import os
+import json
 
 from app.domain.models import Payment, PaymentSource, PaymentType
 
 load_dotenv()
 CSV_HEADER = ["id", "date", "amount", "currency", "merchant", "auto_category", "source", "type", "note", "cust_category"]
 FILE_PATH = os.getenv("PAYMENTS_CSV_PATH")
+CATEGORIES_JSON_PATH = os.getenv("CATEGORIES_JSON_PATH", "resources/categories.json")
+
 
 def load_payments_from_csv(csv_path: str) -> List[Payment]:
     """
@@ -94,3 +97,68 @@ def get_all_payments() -> List[Payment]:
     Repository method to return all payments from persistent storage (CSV).
     """
     return load_payments_from_csv(FILE_PATH)
+
+
+def load_category_tree() -> dict:
+    """
+    Load the category tree from JSON file.
+    """
+    path = Path(CATEGORIES_JSON_PATH)
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def save_category_tree(tree: dict) -> None:
+    """
+    Save the category tree to JSON file.
+    """
+    path = Path(CATEGORIES_JSON_PATH)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as f:
+        json.dump(tree, f, ensure_ascii=False, indent=2)
+
+
+def get_all_child_categories(tree: dict = None) -> list:
+    """
+    Return all child categories (flattened, no parents).
+    Supports leaves as:
+      - strings inside lists (e.g., "Food and Drinks": ["Food", "Drink"])
+      - keys in dicts with null values (e.g., "Transportation": {"Taxi": null})
+    """
+    if tree is None:
+        tree = load_category_tree()
+    result = set()
+
+    def collect(node):
+        if isinstance(node, dict):
+            for k, v in node.items():
+                # If value is None, treat the key as a leaf category
+                if v is None:
+                    result.add(k)
+                else:
+                    collect(v)
+        elif isinstance(node, list):
+            for item in node:
+                if isinstance(item, str):
+                    result.add(item)
+                else:
+                    collect(item)
+
+    collect(tree)
+    return sorted(result)
+
+
+def get_category_tree() -> dict:
+    """
+    Return the full category tree.
+    """
+    return load_category_tree()
+
+
+def update_category_tree(new_tree: dict) -> None:
+    """
+    Replace the category tree with the new one.
+    """
+    save_category_tree(new_tree)

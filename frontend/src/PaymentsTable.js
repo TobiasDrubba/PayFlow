@@ -16,6 +16,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Button,
 } from "@mui/material";
 
 // Custom hooks
@@ -24,7 +25,7 @@ import { useCategories } from "./hooks/useCategories";
 import { useTableColumns } from "./hooks/useTableColumns";
 
 // Components
-import AddCategoryDialog from "./components/AddCategoryDialog";
+import ManageCategoriesDialog from "./components/ManageCategoriesDialog";
 import SummaryCards from "./components/SummaryCards";
 import TableControls from "./components/TableControls";
 import PaymentTableRow from "./components/PaymentTableRow";
@@ -36,11 +37,10 @@ export default function PaymentsTable() {
 
   const {
     categories,
-    addCatOpen,
-    setAddCatOpen,
-    newCat,
-    setNewCat,
-    handleAddCategory,
+    categoryTree,
+    managerOpen,
+    setManagerOpen,
+    handleUpdateCategoryTree,
     handleCategoryChange
   } = useCategories();
 
@@ -64,14 +64,11 @@ export default function PaymentsTable() {
     );
   }, [payments, search]);
 
-  // Handle category change with potential new category creation
+  // Remove AddCategoryDialog and related logic
+
+  // Replace handleCategoryChangeWithDialog with direct call
   const handleCategoryChangeWithDialog = (payment, value) => {
-    if (value && !categories.includes(value)) {
-      setNewCat(value);
-      setAddCatOpen(true);
-    } else {
-      handleCategoryChange(payment, value, payments, setPayments);
-    }
+    handleCategoryChange(payment, value, payments, setPayments);
   };
 
   if (loading) {
@@ -91,12 +88,11 @@ export default function PaymentsTable() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <AddCategoryDialog
-        open={addCatOpen}
-        onClose={() => setAddCatOpen(false)}
-        newCat={newCat}
-        setNewCat={setNewCat}
-        onAdd={handleAddCategory}
+      <ManageCategoriesDialog
+        open={managerOpen}
+        onClose={() => setManagerOpen(false)}
+        categoryTree={categoryTree}
+        onUpdate={handleUpdateCategoryTree}
       />
 
       <Box
@@ -133,16 +129,25 @@ export default function PaymentsTable() {
               Track your transactions with a refined, modern interface.
             </Typography>
           </Box>
-
-          <TableControls
-            search={search}
-            setSearch={setSearch}
-            dateRange={dateRange}
-            setDateRange={setDateRange}
-            orderedColumns={orderedColumns}
-            visibleColumns={visibleColumns}
-            toggleColumn={toggleColumn}
-          />
+          <Stack direction="row" spacing={2}>
+            <TableControls
+              search={search}
+              setSearch={setSearch}
+              dateRange={dateRange}
+              setDateRange={setDateRange}
+              orderedColumns={orderedColumns}
+              visibleColumns={visibleColumns}
+              toggleColumn={toggleColumn}
+            />
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={() => setManagerOpen(true)}
+              sx={{ height: 40, alignSelf: "center" }}
+            >
+              Manage Categories
+            </Button>
+          </Stack>
         </Box>
 
         {/* Summary Cards */}

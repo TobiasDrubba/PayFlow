@@ -31,3 +31,19 @@ export async function updatePaymentCategory(paymentId, custCategory, allForMerch
   if (!response.ok) throw new Error("Failed to update payment category");
   return response.json();
 }
+
+export async function fetchCategoryTree() {
+  const response = await fetch(`${API_URL}/categories/tree`);
+  if (!response.ok) throw new Error("Failed to fetch category tree");
+  return response.json();
+}
+
+export async function updateCategoryTree(tree) {
+  const response = await fetch(`${API_URL}/categories/tree`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tree }),
+  });
+  if (!response.ok) throw new Error("Failed to update category tree");
+  return response.json();
+}

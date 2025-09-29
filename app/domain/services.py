@@ -1,5 +1,5 @@
 import os
-from typing import List
+from typing import List, Dict, Any
 from dotenv import load_dotenv
 
 from app.domain.models import Payment
@@ -8,6 +8,11 @@ from app.data.repository import (
     save_payments_to_csv,
     FILE_PATH,
     upsert_payments_to_csv,
+    load_category_tree,
+    save_category_tree,
+    get_all_child_categories,
+    get_category_tree,
+    update_category_tree,
 )
 from app.data.alipay_parser import parse_alipay_file
 
@@ -19,35 +24,70 @@ CATEGORIES_CSV_PATH = os.getenv("CATEGORIES_CSV_PATH", "resources/categories.csv
 class PaymentService:
     def __init__(self):
         self.payments: List[Payment] = get_all_payments()
-        self.categories: List[str] = self._load_categories()
+        self.category_tree: Dict[str, Any] = load_category_tree()
 
-    def _load_categories(self) -> List[str]:
-        try:
-            with open(CATEGORIES_CSV_PATH, "r", encoding="utf-8") as f:
-                return sorted({line.strip() for line in f if line.strip()})
-        except FileNotFoundError:
-            return []
+    def list_categories(self) -> List[str]:
+        # Return all child categories only
+        return get_all_child_categories(self.category_tree)
 
-    def _persist_categories(self):
-        with open(CATEGORIES_CSV_PATH, "w", encoding="utf-8", newline="") as f:
-            for cat in sorted(set(self.categories)):
-                f.write(cat + "\n")
+    def add_category(self, parent: str, child: str, subparent: str = None) -> str:
+        """
+        Add a child category under a parent (and optional subparent).
+        Supports:
+          - List parents: ["Food", "Drink"] -> append child string
+          - Dict-of-nulls parents: {"Taxi": None} -> set key with None
+          - Subparent path: parent -> dict -> subparent -> dict-of-nulls -> child: None
+        When converting an existing list parent to support subparents, it will be
+        transformed into a dict-of-nulls preserving existing leaves.
+        """
+        tree = self.category_tree
+        parent = (parent or "").strip()
+        child = (child or "").strip()
+        if not parent or not child:
+            raise ValueError("Parent and child category names cannot be empty")
+
+        if subparent:
+            subparent = subparent.strip()
+            if parent not in tree:
+                tree[parent] = {}
+            # If parent is a list, convert to dict-of-nulls preserving elements
+            if isinstance(tree[parent], list):
+                existing = tree[parent]
+                tree[parent] = {name: None for name in existing if isinstance(name, str)}
+            elif not isinstance(tree[parent], dict):
+                tree[parent] = {}
+            # Ensure subparent exists as dict
+            if subparent not in tree[parent] or not isinstance(tree[parent][subparent], dict):
+                tree[parent][subparent] = {}
+            # Add child as a leaf under subparent (dict-of-nulls)
+            tree[parent][subparent][child] = None
+        else:
+            if parent not in tree:
+                # Default to list at top-level if not present
+                tree[parent] = []
+            if isinstance(tree[parent], list):
+                if child not in tree[parent]:
+                    tree[parent].append(child)
+            elif isinstance(tree[parent], dict):
+                # For dict parents, add leaf as key: None
+                tree[parent][child] = None
+            else:
+                # Fallback: coerce to list
+                tree[parent] = [child]
+
+        save_category_tree(tree)
+        self.category_tree = tree
+        return child
+
+    def get_category_tree(self) -> Dict[str, Any]:
+        return get_category_tree()
+
+    def update_category_tree(self, new_tree: Dict[str, Any]) -> None:
+        update_category_tree(new_tree)
+        self.category_tree = new_tree
 
     def _persist_payments(self):
         save_payments_to_csv(FILE_PATH, self.payments)
-
-    def list_categories(self) -> List[str]:
-        return sorted(set(self.categories))
-
-    def add_category(self, name: str) -> str:
-        name = name.strip()
-        if not name:
-            raise ValueError("Category name cannot be empty")
-        if name in self.categories:
-            return name
-        self.categories.append(name)
-        self._persist_categories()
-        return name
 
     def update_payment_category(self, payment_id: str, cust_category: str) -> None:
         updated = False
@@ -100,8 +140,8 @@ payment_service = PaymentService()
 def list_categories() -> List[str]:
     return payment_service.list_categories()
 
-def add_category(name: str) -> str:
-    return payment_service.add_category(name)
+def add_category(parent: str, child: str, subparent: str = None) -> str:
+    return payment_service.add_category(parent, child, subparent)
 
 def update_payment_category(payment_id: str, cust_category: str) -> None:
     payment_service.update_payment_category(payment_id, cust_category)

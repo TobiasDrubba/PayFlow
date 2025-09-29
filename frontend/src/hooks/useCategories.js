@@ -1,31 +1,32 @@
 import { useState, useEffect } from "react";
-import { fetchCategories, addCategory, updatePaymentCategory } from "../api";
+import {fetchCategories, fetchCategoryTree, updateCategoryTree, updatePaymentCategory} from "../api";
 import { useSnackbar } from "notistack";
 
 export function useCategories() {
   const [categories, setCategories] = useState([]);
-  const [addCatOpen, setAddCatOpen] = useState(false);
-  const [newCat, setNewCat] = useState("");
+  const [categoryTree, setCategoryTree] = useState({});
+  const [managerOpen, setManagerOpen] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
 
-  // Fetch categories on mount
+  // Fetch categories and category tree on mount
   useEffect(() => {
     fetchCategories()
       .then(setCategories)
       .catch(() => setCategories([]));
+    fetchCategoryTree()
+      .then(setCategoryTree)
+      .catch(() => setCategoryTree({}));
   }, []);
 
-  // Add new category
-  const handleAddCategory = () => {
-    addCategory(newCat)
-      .then(cat => {
-        setCategories(prev => [...prev, cat]);
-        setAddCatOpen(false);
-        setNewCat("");
-        enqueueSnackbar && enqueueSnackbar("Category added", { variant: "success" });
+  // Update category tree
+  const handleUpdateCategoryTree = (newTree) => {
+    updateCategoryTree(newTree)
+      .then(() => {
+        setCategoryTree(newTree);
+        enqueueSnackbar && enqueueSnackbar("Categories updated", { variant: "success" });
       })
       .catch(() => {
-        enqueueSnackbar && enqueueSnackbar("Failed to add category", { variant: "error" });
+        enqueueSnackbar && enqueueSnackbar("Failed to update categories", { variant: "error" });
       });
   };
 
@@ -62,11 +63,10 @@ export function useCategories() {
 
   return {
     categories,
-    addCatOpen,
-    setAddCatOpen,
-    newCat,
-    setNewCat,
-    handleAddCategory,
+    categoryTree,
+    managerOpen,
+    setManagerOpen,
+    handleUpdateCategoryTree,
     handleCategoryChange
   };
 }
