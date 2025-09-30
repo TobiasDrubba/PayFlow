@@ -134,6 +134,71 @@ class PaymentService:
     def list_payments(self) -> List[Payment]:
         return self.payments
 
+    def aggregate_payments_by_category(self, payments: List[Payment], category_tree: dict, start_date=None, end_date=None):
+        """
+        Aggregate payment amounts by all categories and parent categories.
+        Returns: dict {category_name: sum}
+        """
+        def collect_paths(tree, path=None, paths=None):
+            if paths is None:
+                paths = []
+            if path is None:
+                path = []
+            for k, v in tree.items():
+                current_path = path + [k]
+                if v is None:
+                    paths.append(current_path)
+                elif isinstance(v, dict):
+                    if not v:
+                        paths.append(current_path)
+                    else:
+                        collect_paths(v, current_path, paths)
+            return paths
+
+        # Build all category paths
+        all_paths = collect_paths(category_tree)
+        # Map leaf to its full path
+        leaf_to_path = {}
+        for p in all_paths:
+            leaf_to_path[p[-1]] = p
+
+        # Prepare result dict for all categories
+        result = {}
+        for path in all_paths:
+            for cat in path:
+                result[cat] = 0.0
+
+        # Filter payments by date if needed
+        filtered_payments = []
+        for p in payments:
+            if start_date and p.date < start_date:
+                continue
+            if end_date and p.date > end_date:
+                continue
+            filtered_payments.append(p)
+
+        # Aggregate amounts
+        for p in filtered_payments:
+            # Use cust_category if set, else auto_category
+            cat = p.cust_category.strip() if p.cust_category else p.auto_category.strip()
+            if not cat:
+                continue
+            # Find matching path
+            path = leaf_to_path.get(cat)
+            if not path:
+                # Try partial match (for parent categories)
+                for k, v in leaf_to_path.items():
+                    if cat == k or cat in v:
+                        path = v
+                        break
+            if not path:
+                continue  # skip unknown categories
+            # Add amount to all categories in path
+            for cat_in_path in path:
+                result[cat_in_path] += p.amount
+
+        return result
+
 # Singleton instance for use in API
 payment_service = PaymentService()
 
@@ -157,6 +222,9 @@ def import_wechat_payments(source_filepath: str) -> int:
 
 def list_payments() -> List[Payment]:
     return payment_service.list_payments()
+
+def aggregate_payments_by_category(payments: List[Payment], category_tree: dict, start_date=None, end_date=None):
+    return payment_service.aggregate_payments_by_category(payments, category_tree, start_date, end_date)
 
 if __name__ == '__main__':
     # get file path from options

@@ -18,6 +18,7 @@ from app.domain.services import (
     update_merchant_categories,
     get_category_tree,
     update_category_tree,
+    aggregate_payments_by_category,
 )
 
 # --- Category models ---
@@ -32,6 +33,10 @@ class CategoryTreeRequest(BaseModel):
 class UpdateCategoryRequest(BaseModel):
     cust_category: str
     all_for_merchant: bool = False
+
+class AggregateRequest(BaseModel):
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
 
 # --- Endpoints ---
 
@@ -115,3 +120,19 @@ def update_payment_cust_category(payment_id: str, req: UpdateCategoryRequest):
     else:
         update_payment_category(payment_id, req.cust_category)
         return {"updated": 1}
+
+@app.post("/payments/aggregate")
+def aggregate_payments_endpoint(req: AggregateRequest):
+    """
+    Aggregates payments by category tree for a given date range.
+    Returns nodes and links for Sankey diagram.
+    """
+    payments = list_payments()
+    category_tree = get_category_tree()
+    result = aggregate_payments_by_category(
+        payments,
+        category_tree,
+        start_date=req.start_date,
+        end_date=req.end_date
+    )
+    return result
