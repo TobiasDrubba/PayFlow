@@ -5,20 +5,18 @@ from typing import List, Optional, Dict, Any
 
 from fastapi import FastAPI
 from pydantic import BaseModel
-from fastapi.responses import HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.domain.models import Payment
 from app.domain.services import list_payments
 # --- Add these imports ---
 from app.domain.services import (
-    list_categories,
-    add_category,
     update_payment_category,
     update_merchant_categories,
     get_category_tree,
     update_category_tree,
     aggregate_payments_by_category,
+    aggregate_payments_sankey,  # <-- Add this import
 )
 
 # --- Category models ---
@@ -95,14 +93,6 @@ def get_all_payments_endpoint() -> List[PaymentResponse]:
     payments = list_payments()
     return [PaymentResponse.from_domain(p) for p in payments]
 
-@app.get("/categories", response_model=List[str])
-def get_categories():
-    return list_categories()
-
-@app.post("/categories", response_model=str)
-def create_category(req: CategoryRequest):
-    return add_category(req.parent, req.child, req.subparent)
-
 @app.get("/categories/tree", response_model=Dict[str, Any])
 def get_categories_tree():
     return get_category_tree()
@@ -129,6 +119,7 @@ def aggregate_payments_endpoint(req: AggregateRequest):
     """
     payments = list_payments()
     category_tree = get_category_tree()
+    # Delegate aggregation logic to service layer
     result = aggregate_payments_by_category(
         payments,
         category_tree,
@@ -148,73 +139,11 @@ def aggregate_payments_sankey_endpoint(req: SankeyAggregateRequest):
     """
     payments = list_payments()
     category_tree = get_category_tree()
-    result = aggregate_payments_by_category(
+    # Delegate Sankey aggregation logic to service layer
+    result = aggregate_payments_sankey(
         payments,
         category_tree,
         start_date=req.start_date,
         end_date=req.end_date
     )
-
-    print(result["metadata"])
-
-    # Build Sankey nodes and links
-    nodes = []
-    node_map = {}
-    idx = 0
-
-    # Helper to add node and get its index
-    def add_node(name):
-        nonlocal idx
-        if name in node_map:
-            return node_map[name]
-        value = 0
-        if name == "Total Sum" and "metadata" in result and "total sum" in result["metadata"]:
-            value = result["metadata"]["total sum"]
-        elif name in result:
-            value = result[name]
-        nodes.append({"name": name, "value": value})
-        node_map[name] = idx
-        idx += 1
-        return node_map[name]
-
-    # Add root node first
-    add_node("Total Sum")
-
-    # Recursively add nodes and links
-    links = []
-    def traverse(tree, parent):
-        for k, v in tree.items():
-            add_node(k)
-            value = result.get(k, 0)
-            if value > 0:
-                links.append({
-                    "source": node_map[parent],
-                    "target": node_map[k],
-                    "value": value
-                })
-            if isinstance(v, dict):
-                traverse(v, k)
-
-    # Top-level categories
-    for top_cat in category_tree:
-        add_node(top_cat)
-        value = result.get(top_cat, 0)
-        if value > 0:
-            links.append({
-                "source": node_map["Total Sum"],
-                "target": node_map[top_cat],
-                "value": value
-            })
-        traverse(category_tree[top_cat], top_cat)
-
-    # Add "no category" and "invalid category"
-    for special in ["no category", "invalid category"]:
-        if result.get(special, 0) > 0:
-            add_node(special)
-            links.append({
-                "source": node_map["Total Sum"],
-                "target": node_map[special],
-                "value": result[special]
-            })
-
-    return {"nodes": nodes, "links": links}
+    return result

@@ -150,10 +150,3 @@ def get_all_child_categories(tree: dict = None) -> list:
     return sorted(result)
 
 
-def get_category_tree() -> dict:
-    """
-    Return the full category tree.
-    """
-    return load_category_tree()
-
-
