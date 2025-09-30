@@ -137,7 +137,9 @@ class PaymentService:
     def aggregate_payments_by_category(self, payments: List[Payment], category_tree: dict, start_date=None, end_date=None):
         """
         Aggregate payment amounts by all categories and parent categories.
-        Returns: dict {category_name: sum}
+        Returns: dict {category_name: sum, "metadata": {...}}
+        Adds 'no category' and 'invalid category' keys for uncategorized and unknown payments.
+        Metadata includes total sum and invalid categories list.
         """
         def collect_paths(tree, path=None, paths=None):
             if paths is None:
@@ -167,6 +169,11 @@ class PaymentService:
         for path in all_paths:
             for cat in path:
                 result[cat] = 0.0
+        result["no category"] = 0.0
+        result["invalid category"] = 0.0
+
+        total_sum = 0.0
+        invalid_categories_set = set()
 
         # Filter payments by date if needed
         filtered_payments = []
@@ -179,11 +186,11 @@ class PaymentService:
 
         # Aggregate amounts
         for p in filtered_payments:
-            # Use cust_category if set, else auto_category
-            cat = p.cust_category.strip() if p.cust_category else p.auto_category.strip()
+            total_sum += p.amount
+            cat = p.cust_category.strip() if p.cust_category else None
             if not cat:
+                result["no category"] += p.amount
                 continue
-            # Find matching path
             path = leaf_to_path.get(cat)
             if not path:
                 # Try partial match (for parent categories)
@@ -192,10 +199,16 @@ class PaymentService:
                         path = v
                         break
             if not path:
-                continue  # skip unknown categories
-            # Add amount to all categories in path
+                result["invalid category"] += p.amount
+                invalid_categories_set.add(cat)
+                continue
             for cat_in_path in path:
                 result[cat_in_path] += p.amount
+
+        result["metadata"] = {
+            "total sum": total_sum,
+            "invalid categories": sorted(list(invalid_categories_set))
+        }
 
         return result
 
