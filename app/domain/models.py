@@ -7,6 +7,7 @@ from enum import Enum
 class PaymentSource(Enum):
     ALIPAY = "Alipay"
     WECHAT = "WeChat"
+    TSINGHUA_CARD = "Tsinghua Card"
     OTHER = "Other"
 
 class PaymentType(Enum):

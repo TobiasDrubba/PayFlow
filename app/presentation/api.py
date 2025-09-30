@@ -16,7 +16,8 @@ from app.domain.services import (
     get_category_tree,
     update_category_tree,
     aggregate_payments_by_category,
-    aggregate_payments_sankey,  # <-- Add this import
+    aggregate_payments_sankey,
+    list_categories
 )
 
 # --- Category models ---
@@ -92,6 +93,10 @@ def get_all_payments_endpoint() -> List[PaymentResponse]:
     """
     payments = list_payments()
     return [PaymentResponse.from_domain(p) for p in payments]
+
+@app.get("/categories", response_model=List[str])
+def get_categories():
+    return list_categories()
 
 @app.get("/categories/tree", response_model=Dict[str, Any])
 def get_categories_tree():

@@ -78,6 +78,13 @@ class PaymentService:
         self.payments = get_all_payments()
         return added
 
+    def import_tsinghua_card_payments(self, source_filepath: str) -> int:
+        from app.data.tsinghua_card_parser import parse_tsinghua_card_file
+        payments = parse_tsinghua_card_file(source_filepath)
+        added = upsert_payments_to_csv(payments)
+        self.payments = get_all_payments()
+        return added
+
     def list_payments(self) -> List[Payment]:
         return self.payments
 
@@ -98,6 +105,9 @@ def import_alipay_payments(source_filepath: str) -> int:
 
 def import_wechat_payments(source_filepath: str) -> int:
     return payment_service.import_wechat_payments(source_filepath)
+
+def import_tsinghua_card_payments(source_filepath: str) -> int:
+    return payment_service.import_tsinghua_card_payments(source_filepath)
 
 def get_category_tree():
     return payment_service.category_tree
@@ -122,10 +132,8 @@ def aggregate_payments_sankey(payments: List[Payment], category_tree: dict, star
 if __name__ == '__main__':
     # get file path from options
     import sys
-    if len(sys.argv) < 3:
-        print("Usage: python -m app.data.services <filepathAlipay> <filepathWeChat>")
+    if len(sys.argv) < 2:
+        print("Usage: python -m app.data.services <filepathAlipay> <filepathWeChat> <filepathTsinghuaCard>")
     else:
-        filepathAli = sys.argv[1]
-        filepathWe = sys.argv[2]
-        import_alipay_payments(filepathAli)
-        import_wechat_payments(filepathWe)
+        filepathTsinghua = sys.argv[1]
+        import_tsinghua_card_payments(filepathTsinghua)
