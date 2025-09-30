@@ -18,6 +18,7 @@ import {
   TableRow,
   Button,
 } from "@mui/material";
+import { fetchAggregation } from "./api";
 
 // Custom hooks
 import { usePayments, usePaymentSums } from "./hooks/usePayments";
@@ -29,6 +30,7 @@ import ManageCategoriesDialog from "./components/ManageCategoriesDialog";
 import SummaryCards from "./components/SummaryCards";
 import TableControls from "./components/TableControls";
 import PaymentTableRow from "./components/PaymentTableRow";
+import AggregationDialog from "./components/AggregationDialog";
 
 export default function PaymentsTable() {
   const { payments, setPayments, loading, error } = usePayments();
@@ -64,11 +66,48 @@ export default function PaymentsTable() {
     );
   }, [payments, search]);
 
-  // Remove AddCategoryDialog and related logic
-
   // Replace handleCategoryChangeWithDialog with direct call
   const handleCategoryChangeWithDialog = (payment, value) => {
     handleCategoryChange(payment, value, payments, setPayments);
+  };
+
+  // Aggregation dialog state
+  const [aggregationOpen, setAggregationOpen] = useState(false);
+  const [aggregationData, setAggregationData] = useState(null);
+  const [aggregationLoading, setAggregationLoading] = useState(false);
+  const [aggregationError, setAggregationError] = useState("");
+  const [aggregationTitle, setAggregationTitle] = useState("");
+
+  // Handler for summary card click
+  const handleSummaryCardClick = async (type) => {
+    let start = null, end = null, title = "";
+    if (type === "total") {
+      title = "Total Aggregation";
+    } else if (type === "month") {
+      title = "Monthly Aggregation";
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else if (type === "custom") {
+      title = "Custom Range Aggregation";
+      start = dateRange[0];
+      end = dateRange[1];
+      if (!start || !end) return;
+    }
+    setAggregationTitle(title);
+    setAggregationLoading(true);
+    setAggregationOpen(true);
+    setAggregationError("");
+    try {
+      const params = {};
+      if (start) params.start_date = start.toISOString();
+      if (end) params.end_date = end.toISOString();
+      const data = await fetchAggregation(params);
+      setAggregationData(data);
+    } catch (err) {
+      setAggregationError("Failed to fetch aggregation data.");
+      setAggregationData(null);
+    }
+    setAggregationLoading(false);
   };
 
   if (loading) {
@@ -93,6 +132,14 @@ export default function PaymentsTable() {
         onClose={() => setManagerOpen(false)}
         categoryTree={categoryTree}
         onUpdate={handleUpdateCategoryTree}
+      />
+      <AggregationDialog
+        open={aggregationOpen}
+        onClose={() => setAggregationOpen(false)}
+        data={aggregationData}
+        loading={aggregationLoading}
+        error={aggregationError}
+        title={aggregationTitle}
       />
 
       <Box
@@ -157,6 +204,7 @@ export default function PaymentsTable() {
           customSum={customSum}
           now={now}
           dateRange={dateRange}
+          onCardClick={handleSummaryCardClick}
         />
 
         {/* Table */}

@@ -136,3 +136,85 @@ def aggregate_payments_endpoint(req: AggregateRequest):
         end_date=req.end_date
     )
     return result
+
+class SankeyAggregateRequest(BaseModel):
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+
+@app.post("/payments/aggregate/sankey")
+def aggregate_payments_sankey_endpoint(req: SankeyAggregateRequest):
+    """
+    Aggregates payments and returns Sankey diagram data: nodes and links.
+    """
+    payments = list_payments()
+    category_tree = get_category_tree()
+    result = aggregate_payments_by_category(
+        payments,
+        category_tree,
+        start_date=req.start_date,
+        end_date=req.end_date
+    )
+
+    print(result["metadata"])
+
+    # Build Sankey nodes and links
+    nodes = []
+    node_map = {}
+    idx = 0
+
+    # Helper to add node and get its index
+    def add_node(name):
+        nonlocal idx
+        if name in node_map:
+            return node_map[name]
+        value = 0
+        if name == "Total Sum" and "metadata" in result and "total sum" in result["metadata"]:
+            value = result["metadata"]["total sum"]
+        elif name in result:
+            value = result[name]
+        nodes.append({"name": name, "value": value})
+        node_map[name] = idx
+        idx += 1
+        return node_map[name]
+
+    # Add root node first
+    add_node("Total Sum")
+
+    # Recursively add nodes and links
+    links = []
+    def traverse(tree, parent):
+        for k, v in tree.items():
+            add_node(k)
+            value = result.get(k, 0)
+            if value > 0:
+                links.append({
+                    "source": node_map[parent],
+                    "target": node_map[k],
+                    "value": value
+                })
+            if isinstance(v, dict):
+                traverse(v, k)
+
+    # Top-level categories
+    for top_cat in category_tree:
+        add_node(top_cat)
+        value = result.get(top_cat, 0)
+        if value > 0:
+            links.append({
+                "source": node_map["Total Sum"],
+                "target": node_map[top_cat],
+                "value": value
+            })
+        traverse(category_tree[top_cat], top_cat)
+
+    # Add "no category" and "invalid category"
+    for special in ["no category", "invalid category"]:
+        if result.get(special, 0) > 0:
+            add_node(special)
+            links.append({
+                "source": node_map["Total Sum"],
+                "target": node_map[special],
+                "value": result[special]
+            })
+
+    return {"nodes": nodes, "links": links}

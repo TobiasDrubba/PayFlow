@@ -12,7 +12,7 @@ from app.data.repository import (
     save_category_tree,
     get_all_child_categories,
     get_category_tree,
-    update_category_tree,
+    save_category_tree,
 )
 from app.data.alipay_parser import parse_alipay_file
 
@@ -83,7 +83,7 @@ class PaymentService:
         return get_category_tree()
 
     def update_category_tree(self, new_tree: Dict[str, Any]) -> None:
-        update_category_tree(new_tree)
+        save_category_tree(new_tree)
         self.category_tree = new_tree
 
     def _persist_payments(self):
@@ -178,10 +178,27 @@ class PaymentService:
         # Filter payments by date if needed
         filtered_payments = []
         for p in payments:
-            if start_date and p.date < start_date:
+            # Make p.date naive
+            p_date = p.date
+            if p_date.tzinfo is not None:
+                p_date = p_date.replace(tzinfo=None)
+
+            # Make start_date naive
+            sd = start_date
+            if sd and sd.tzinfo is not None:
+                sd = sd.replace(tzinfo=None)
+
+            # Make end_date naive
+            ed = end_date
+            if ed and ed.tzinfo is not None:
+                ed = ed.replace(tzinfo=None)
+
+            # Filtering
+            if sd and p_date < sd:
                 continue
-            if end_date and p.date > end_date:
+            if ed and p_date > ed:
                 continue
+
             filtered_payments.append(p)
 
         # Aggregate amounts
@@ -204,6 +221,11 @@ class PaymentService:
                 continue
             for cat_in_path in path:
                 result[cat_in_path] += p.amount
+        # Round all sums to zero decimal places
+        for key in result:
+            result[key] = round(result[key])
+
+        result = {k: v for k, v in result.items() if (k in ["no category", "invalid category", "metadata"] or v >= 80)}
 
         result["metadata"] = {
             "total sum": total_sum,
@@ -232,6 +254,9 @@ def import_alipay_payments(source_filepath: str) -> int:
 
 def import_wechat_payments(source_filepath: str) -> int:
     return payment_service.import_wechat_payments(source_filepath)
+
+def update_category_tree(new_tree: Dict[str, Any]) -> None:
+    payment_service.update_category_tree(new_tree)
 
 def list_payments() -> List[Payment]:
     return payment_service.list_payments()

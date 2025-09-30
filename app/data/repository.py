@@ -157,8 +157,3 @@ def get_category_tree() -> dict:
     return load_category_tree()
 
 
-def update_category_tree(new_tree: dict) -> None:
-    """
-    Replace the category tree with the new one.
-    """
-    save_category_tree(new_tree)

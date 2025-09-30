@@ -47,3 +47,17 @@ export async function updateCategoryTree(tree) {
   if (!response.ok) throw new Error("Failed to update category tree");
   return response.json();
 }
+
+export async function fetchAggregation({ start_date, end_date } = {}) {
+  const url = `${API_URL}/payments/aggregate/sankey`;
+  const body = {};
+  if (start_date) body.start_date = start_date;
+  if (end_date) body.end_date = end_date;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) throw new Error("Failed to fetch aggregation data");
+  return response.json();
+}

@@ -2,7 +2,7 @@ import React from "react";
 import { Grid, Card, CardContent, Typography } from "@mui/material";
 import { format } from "date-fns";
 
-export default function SummaryCards({ totalSum, monthlySum, customSum, now, dateRange }) {
+export default function SummaryCards({ totalSum, monthlySum, customSum, now, dateRange, onCardClick }) {
   return (
     <Grid container spacing={2} sx={{ mb: 3 }}>
       <Grid item xs={12} md={4}>
@@ -13,7 +13,9 @@ export default function SummaryCards({ totalSum, monthlySum, customSum, now, dat
             p: 0.5,
             background: "linear-gradient(135deg, #111827, #1f2937)",
             color: "white",
+            cursor: "pointer"
           }}
+          onClick={() => onCardClick && onCardClick("total")}
         >
           <CardContent sx={{ p: 2.5 }}>
             <Typography variant="overline" sx={{ opacity: 0.8 }}>
@@ -35,7 +37,9 @@ export default function SummaryCards({ totalSum, monthlySum, customSum, now, dat
             p: 0.5,
             background: "linear-gradient(135deg, #0f766e, #14b8a6)",
             color: "white",
+            cursor: "pointer"
           }}
+          onClick={() => onCardClick && onCardClick("month")}
         >
           <CardContent sx={{ p: 2.5 }}>
             <Typography variant="overline" sx={{ opacity: 0.9 }}>
@@ -59,7 +63,9 @@ export default function SummaryCards({ totalSum, monthlySum, customSum, now, dat
             p: 0.5,
             background: "linear-gradient(135deg, #3730a3, #6366f1)",
             color: "white",
+            cursor: "pointer"
           }}
+          onClick={() => onCardClick && onCardClick("custom")}
         >
           <CardContent sx={{ p: 2.5 }}>
             <Typography variant="overline" sx={{ opacity: 0.9 }}>
