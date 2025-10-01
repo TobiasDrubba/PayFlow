@@ -257,7 +257,8 @@ export default function PaymentsTable() {
           </div>
           <div className="header-actions">
             <Button
-              className="btn-secondary"
+              variant="contained"
+              className="btn-primary upload-btn"
               onClick={() => setSettingsDialogOpen(true)}
               startIcon={<SettingsIcon />}
             >
@@ -313,24 +314,9 @@ export default function PaymentsTable() {
             variant="contained"
             startIcon={<UploadIcon />}
             onClick={() => setUploadDialogOpen(true)}
-            sx={{
-              textTransform: 'none',
-              fontWeight: 600,
-              height: '48px',
-              px: 3,
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.25)',
-              whiteSpace: 'nowrap',
-              '&:hover': {
-                background: 'linear-gradient(135deg, #5568d3 0%, #653a8b 100%)',
-                transform: 'translateY(-2px)',
-                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.35)',
-              },
-              transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
-            }}
+            className="btn-primary upload-btn"
           >
-            Upload
+            Upload Transactions
           </Button>
         </Box>
 

@@ -90,9 +90,8 @@ export default function ManageCategoriesDialog({
       <Dialog open={open} onClose={handleMainCancel} maxWidth="md" fullWidth>
         <DialogTitle>Manage Categories</DialogTitle>
         <DialogContent>
-          <Box sx={{ height: 500 }}>
+          <Box sx={{ height: 600 }}>
             <TextField
-              label="Categories JSON"
               value={rawJson}
               onChange={(e) => {
                 const v = e.target.value;

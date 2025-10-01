@@ -111,12 +111,14 @@
 
 /* === BUTTONS === */
 .btn-primary,
-.btn-secondary {
-  height: 44px;
+.btn-secondary,
+.settings-btn,
+.upload-btn {
+  height: 48px;
   padding: 0 24px;
   border-radius: var(--border-radius-md);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.01em;
   border: none;
   cursor: pointer;
@@ -126,34 +128,16 @@
   gap: 8px;
   position: relative;
   overflow: hidden;
-}
-
-.btn-primary {
-  background: var(--primary-gradient);
-  color: white;
   box-shadow: var(--shadow-md);
 }
 
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
-  opacity: 0;
-  transition: opacity var(--transition-base);
-}
 
-.btn-primary:hover {
+.btn-primary:hover,
+.upload-btn:hover,
+.settings-btn:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-}
-
-.btn-primary:hover::before {
-  opacity: 1;
-}
-
-.btn-primary:active {
-  transform: translateY(0);
 }
 
 .btn-secondary {
@@ -570,4 +554,33 @@ select:focus-visible {
 
 .settings-dialog-manage-btn:hover {
   background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%) !important;
+}
+
+/* Icon-only round button for settings and upload */
+.icon-btn {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px;
+  max-height: 48px;
+  border-radius: 50%;
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all var(--transition-base);
+  font-size: 24px;
+}
+
+.icon-btn:hover, .icon-btn:focus-visible {
+  background: #667eea;
+  color: white;
+  box-shadow: var(--shadow-md);
+  border-color: #667eea;
+  transform: translateY(-2px);
 }
