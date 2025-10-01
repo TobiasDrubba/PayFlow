@@ -43,8 +43,7 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
             elif "持卡人消费" in raw_cat:
                 p_type = PaymentType.EXPENSE
             else:
-                p_type = PaymentType.NONE
-
+                raise ValueError("Transaction type is not recognized.")
             # Determine custom category based on the time of day.
             # Three categories are defined: "Canteen Breakfast", "Canteen Lunch", "Canteen Dinner"
 

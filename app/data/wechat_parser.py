@@ -41,7 +41,7 @@ def parse_wechat_file(filepath: str) -> List[Payment]:
             elif "expense" in raw_cat or "支出" in raw_cat:
                 p_type = PaymentType.EXPENSE
             else:
-                p_type = PaymentType.NONE
+                raise ValueError("Transaction type is not recognized.")
 
             payment = Payment(
                 id=str(row[TRANSACTION_ID_COL]).strip(),  # Ensure no trailing tabs/special chars

@@ -15,7 +15,6 @@ class PaymentType(Enum):
     EXPENSE = "expense"
     ABORT = "abort"
     REFUND = "refund"
-    NONE = "none"
 
 @dataclass
 class Payment:
@@ -26,7 +25,7 @@ class Payment:
     merchant: str
     auto_category: str
     source: PaymentSource
-    type: PaymentType = PaymentType.NONE
+    type: PaymentType
     note: str = ""
     cust_category: str = ""
 
