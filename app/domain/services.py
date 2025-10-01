@@ -27,6 +27,21 @@ class PaymentService:
         return get_all_child_categories(self.category_tree)
 
     def update_category_tree(self, new_tree: Dict[str, Any]) -> None:
+        # Identify deleted child categories
+        old_child_categories = set(get_all_child_categories(self.category_tree))
+        new_child_categories = set(get_all_child_categories(new_tree))
+        deleted_categories = old_child_categories - new_child_categories
+
+        # Remove deleted categories from payments
+        changed = False
+        for p in self.payments:
+            if p.cust_category in deleted_categories:
+                p.cust_category = ""
+                changed = True
+        if changed:
+            self._persist_payments()
+
+        # Now update the tree
         save_category_tree(new_tree)
         self.category_tree = new_tree
 

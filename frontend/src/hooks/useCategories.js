@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import {fetchCategories, fetchCategoryTree, updateCategoryTree, updatePaymentCategory} from "../api";
 import { useSnackbar } from "notistack";
 
-export function useCategories() {
+export function useCategories(refetchPayments) {
   const [categories, setCategories] = useState([]);
   const [categoryTree, setCategoryTree] = useState({});
   const [managerOpen, setManagerOpen] = useState(false);
@@ -24,6 +24,7 @@ export function useCategories() {
       .then(() => {
         setCategoryTree(newTree);
         enqueueSnackbar && enqueueSnackbar("Categories updated", { variant: "success" });
+        if (refetchPayments) refetchPayments();
       })
       .catch(() => {
         enqueueSnackbar && enqueueSnackbar("Failed to update categories", { variant: "error" });

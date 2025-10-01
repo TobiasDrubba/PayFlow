@@ -33,7 +33,7 @@ import PaymentTableRow from "./components/PaymentTableRow";
 import AggregationDialog from "./components/AggregationDialog";
 
 export default function PaymentsTable() {
-  const { payments, setPayments, loading, error } = usePayments();
+  const { payments, setPayments, loading, error, refetchPayments } = usePayments();
   const [search, setSearch] = useState("");
   const [dateRange, setDateRange] = useState([null, null]);
 
@@ -44,7 +44,7 @@ export default function PaymentsTable() {
     setManagerOpen,
     handleUpdateCategoryTree,
     handleCategoryChange
-  } = useCategories();
+  } = useCategories(refetchPayments);
 
   const {
     orderedColumns,
@@ -132,6 +132,7 @@ export default function PaymentsTable() {
         onClose={() => setManagerOpen(false)}
         categoryTree={categoryTree}
         onUpdate={handleUpdateCategoryTree}
+        payments={payments}
       />
       <AggregationDialog
         open={aggregationOpen}
