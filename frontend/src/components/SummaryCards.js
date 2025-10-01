@@ -11,7 +11,7 @@ function formatSum(sum) {
   } else {
     display = `${abs} 元`;
   }
-  return `-${display}`;
+  return `${display}`;
 }
 
 export default function SummaryCards({
@@ -49,20 +49,22 @@ export default function SummaryCards({
       gradient: "linear-gradient(135deg, #f59e42, #fbbf24)",
       onClick: () => onCardClick && onCardClick("past30"),
     },
-    {
+  ];
+
+  // Only add custom card if custom range is set
+  if (dateRange[0] && dateRange[1]) {
+    cards.push({
       key: "custom",
       label: "Custom Range",
       sum: customSum,
-      caption: dateRange[0] && dateRange[1]
-        ? `${format(dateRange[0], "MMM d")} – ${format(dateRange[1], "MMM d, yyyy")}`
-        : "Pick a date range",
+      caption: `${format(dateRange[0], "MMM d")} – ${format(dateRange[1], "MMM d, yyyy")}`,
       gradient: "linear-gradient(135deg, #0ea5e9, #38bdf8)",
       onClick: () => onCardClick && onCardClick("custom"),
-    },
-  ];
+    });
+  }
 
   // Sort cards by sum descending
-  const sortedCards = [...cards].sort((a, b) => b.sum - a.sum);
+  const sortedCards = [...cards].sort((a, b) => a.sum - b.sum);
 
   return (
     <Grid container spacing={2} sx={{ mb: 3 }}>

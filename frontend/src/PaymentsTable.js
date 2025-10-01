@@ -123,21 +123,31 @@ export default function PaymentsTable() {
   React.useEffect(() => {
     if (!payments.length) return;
     const nowDate = new Date();
-    // Helper to get ISO string without timezone
     const toNaiveISOString = (d) => d ? d.toISOString().slice(0, 19) : null;
+
+    // If custom date range is set, only fetch for custom
+    if (dateRange[0] && dateRange[1]) {
+      const ranges = {
+        custom: {
+          start: toNaiveISOString(dateRange[0]),
+          end: toNaiveISOString(dateRange[1]),
+        }
+      };
+      fetchSumsForRanges(ranges)
+        .then((res) => setSummarySums((prev) => ({
+          ...prev,
+          custom: res.custom ?? 0
+        })))
+        .catch(() => {});
+      return;
+    }
+
+    // Otherwise, fetch for the default cards only
     const ranges = {
       total: { start: null, end: null },
       past7: { start: toNaiveISOString(new Date(nowDate.getTime() - 6 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
       past30: { start: toNaiveISOString(new Date(nowDate.getTime() - 29 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
     };
-    if (dateRange[0] && dateRange[1]) {
-      ranges.custom = {
-        start: toNaiveISOString(dateRange[0]),
-        end: toNaiveISOString(dateRange[1]),
-      };
-    } else {
-      ranges.custom = { start: null, end: null };
-    }
     fetchSumsForRanges(ranges)
       .then(setSummarySums)
       .catch(() => {});
