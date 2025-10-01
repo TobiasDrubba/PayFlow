@@ -3,6 +3,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
+  Box,
   Typography,
   CircularProgress,
   Table,
@@ -12,7 +13,14 @@ import {
   TableHead,
   TableRow,
   Button,
+  TextField,
+  InputAdornment,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  IconButton,
 } from "@mui/material";
+import { Search as SearchIcon, Upload as UploadIcon, Settings as SettingsIcon, Close as CloseIcon } from "@mui/icons-material";
 import { fetchAggregation, fetchSumsForRanges } from "./api";
 import "./PaymentsTable.css";
 
@@ -24,10 +32,10 @@ import { useTableColumns } from "./hooks/useTableColumns";
 // Components
 import ManageCategoriesDialog from "./components/ManageCategoriesDialog";
 import SummaryCards from "./components/SummaryCards";
-import TableControls from "./components/TableControls";
 import PaymentTableRow from "./components/PaymentTableRow";
 import AggregationDialog from "./components/AggregationDialog";
 import FileUpload from "./components/FileUpload";
+import SettingsDialog from "./components/SettingsDialog";
 
 export default function PaymentsTable() {
   const { payments, setPayments, loading, error, refetchPayments } = usePayments();
@@ -60,6 +68,10 @@ export default function PaymentsTable() {
     past90: 0,
     custom: 0,
   });
+
+  // Dialog states
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
   // Filter payments by search term
   const filteredPayments = useMemo(() => {
@@ -113,6 +125,11 @@ export default function PaymentsTable() {
       setAggregationData(null);
     }
     setAggregationLoading(false);
+  };
+
+  const handleUploadSuccess = () => {
+    refetchPayments();
+    setUploadDialogOpen(false);
   };
 
   React.useEffect(() => {
@@ -187,6 +204,50 @@ export default function PaymentsTable() {
         title={aggregationTitle}
       />
 
+      {/* Upload Dialog */}
+      <Dialog
+        open={uploadDialogOpen}
+        onClose={() => setUploadDialogOpen(false)}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            boxShadow: '0 12px 48px rgba(0,0,0,0.12)',
+          }
+        }}
+      >
+        <DialogTitle sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          pb: 2,
+          borderBottom: '1px solid rgba(0,0,0,0.06)',
+        }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: -0.01 }}>
+            Upload Payment Files
+          </Typography>
+          <IconButton onClick={() => setUploadDialogOpen(false)} size="small">
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <FileUpload onSuccess={handleUploadSuccess} />
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <SettingsDialog
+        open={settingsDialogOpen}
+        onClose={() => setSettingsDialogOpen(false)}
+        setManagerOpen={setManagerOpen}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        orderedColumns={orderedColumns}
+        visibleColumns={visibleColumns}
+        toggleColumn={toggleColumn}
+      />
+
       <div className="payments-container animate-in">
         {/* Header */}
         <div className="page-header">
@@ -195,26 +256,12 @@ export default function PaymentsTable() {
             <p>Track your transactions with a refined, modern interface</p>
           </div>
           <div className="header-actions">
-            <TableControls
-              search={search}
-              setSearch={setSearch}
-              dateRange={dateRange}
-              setDateRange={setDateRange}
-              orderedColumns={orderedColumns}
-              visibleColumns={visibleColumns}
-              toggleColumn={toggleColumn}
-            />
             <Button
               className="btn-secondary"
-              onClick={() => setManagerOpen(true)}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 600,
-                height: '44px',
-                px: 3,
-              }}
+              onClick={() => setSettingsDialogOpen(true)}
+              startIcon={<SettingsIcon />}
             >
-              Manage Categories
+              Settings
             </Button>
           </div>
         </div>
@@ -230,10 +277,62 @@ export default function PaymentsTable() {
           past30DaysSum={summarySums.past30}
         />
 
-        {/* File Upload UI */}
-        <div className="file-upload-section">
-          <FileUpload onSuccess={refetchPayments} />
-        </div>
+        {/* Search Bar and Upload Button */}
+        <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+          <TextField
+            fullWidth
+            placeholder="Search transactions..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon sx={{ color: 'rgba(0,0,0,0.4)' }} />
+                </InputAdornment>
+              ),
+              sx: {
+                borderRadius: '12px',
+                background: 'white',
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(0,0,0,0.08)',
+                  borderWidth: '2px',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(102,126,234,0.3)',
+                },
+                '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: '#667eea',
+                },
+                height: '48px',
+                fontSize: '15px',
+                fontWeight: 500,
+              }
+            }}
+          />
+          <Button
+            variant="contained"
+            startIcon={<UploadIcon />}
+            onClick={() => setUploadDialogOpen(true)}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              height: '48px',
+              px: 3,
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.25)',
+              whiteSpace: 'nowrap',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #5568d3 0%, #653a8b 100%)',
+                transform: 'translateY(-2px)',
+                boxShadow: '0 6px 20px rgba(102, 126, 234, 0.35)',
+              },
+              transition: 'all 250ms cubic-bezier(0.4, 0, 0.2, 1)',
+            }}
+          >
+            Upload
+          </Button>
+        </Box>
 
         {/* Table */}
         <div className="table-container animate-in">

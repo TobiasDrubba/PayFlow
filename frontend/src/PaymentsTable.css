@@ -545,3 +545,29 @@ select:focus-visible {
   background: linear-gradient(135deg, rgba(102,126,234,0.25), rgba(118,75,162,0.25));
   transform: translateY(-1px);
 }
+
+/* === SETTINGS DIALOG === */
+.settings-dialog-paper {
+  border-radius: 20px !important;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.12) !important;
+}
+
+.settings-dialog-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+}
+
+.settings-dialog-manage-btn {
+  text-transform: none !important;
+  font-weight: 600 !important;
+  height: 48px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.settings-dialog-manage-btn:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%) !important;
+}
