@@ -166,7 +166,7 @@ export default function PaymentTableRow({
 
       case "cust_category":
         return (
-          <TableCell key={`${payment.id}-cust_category`} sx={{ maxWidth: 200 }}>
+          <TableCell key={`${payment.id}-cust_category`} sx={{ maxWidth: 400 }}>
             <Autocomplete
               size="small"
               value={payment.cust_category || null}
@@ -185,7 +185,7 @@ export default function PaymentTableRow({
                   }}
                 />
               )}
-              sx={{ minWidth: 120 }}
+              sx={{ minWidth: 180 }}
               clearOnEscape
             />
           </TableCell>

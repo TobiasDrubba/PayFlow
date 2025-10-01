@@ -10,7 +10,7 @@ export function useTableColumns() {
     { id: "source", label: "Source" },
     { id: "type", label: "Type" },
     { id: "note", label: "Note" },
-    { id: "cust_category", label: "Custom Category" },
+    { id: "cust_category", label: "Category" },
   ]), []);
 
   const [columnOrder, setColumnOrder] = useState(() => {
