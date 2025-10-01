@@ -126,12 +126,13 @@ export default function FileUpload({ onSuccess }) {
       {uploadFiles.length > 0 && (
         <div className="file-list">
           {uploadFiles.map((f, idx) => (
-            <div key={f.file.name} className="file-item">
+            <div key={f.file.name} className="file-item" style={{ position: "relative", zIndex: 1 }}>
               <div className="file-icon">{getFileIcon(f.file.name)}</div>
-              <div className="file-info">
+              <div className="file-info" style={{ minWidth: 0 }}>
                 <p className="file-name">{f.file.name}</p>
                 <p className="file-size">{formatFileSize(f.file.size)}</p>
               </div>
+              {/* Ensure the select is not overlapped by anything */}
               <select
                 className={`file-type-select ${!f.type ? 'empty' : ''}`}
                 value={f.type}

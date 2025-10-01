@@ -176,6 +176,8 @@
   border: 1px solid rgba(0, 0, 0, 0.08);
   transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
   animation: slideIn 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative; /* Ensure stacking context for z-index */
+  z-index: 1;
 }
 
 @keyframes slideIn {
@@ -245,6 +247,8 @@
   background-position: right 12px center;
   padding-right: 36px;
   min-width: 160px;
+  z-index: 10;
+  position: relative;
 }
 
 .file-type-select:hover {
