@@ -96,18 +96,16 @@ export default function PaymentsTable() {
   const [aggregationTitle, setAggregationTitle] = useState("");
 
   // Handler for summary card click
-  const handleSummaryCardClick = async (type) => {
-    let start = null, end = null, title = "";
+  const handleSummaryCardClick = async ({ type, start, end }) => {
+    let title = "";
     if (type === "total") {
       title = "Total Aggregation";
-    } else if (type === "month") {
-      title = "Monthly Aggregation";
-      start = new Date(now.getFullYear(), now.getMonth(), 1);
-      end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    } else if (type === "past7") {
+      title = "Past 7 Days Aggregation";
+    } else if (type === "past30") {
+      title = "Past 30 Days Aggregation";
     } else if (type === "custom") {
       title = "Custom Range Aggregation";
-      start = dateRange[0];
-      end = dateRange[1];
       if (!start || !end) return;
     }
     setAggregationTitle(title);

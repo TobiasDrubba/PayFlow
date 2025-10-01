@@ -1,6 +1,7 @@
 from typing import List
 
 from app.domain.models import Payment
+from app.utils.sum import get_signed_amount
 
 
 def sum_payments_by_category(payments: List[Payment], category_tree: dict, start_date=None, end_date=None):
@@ -73,10 +74,11 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
 
     # Aggregate amounts
     for p in filtered_payments:
-        total_sum += p.amount
+        signed_amount = get_signed_amount(p)
+        total_sum += signed_amount
         cat = p.cust_category.strip() if p.cust_category else None
         if not cat:
-            result["no category"] += p.amount
+            result["no category"] += signed_amount
             continue
         path = leaf_to_path.get(cat)
         if not path:
@@ -86,16 +88,16 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
                     path = v
                     break
         if not path:
-            result["invalid category"] += p.amount
+            result["invalid category"] += signed_amount
             invalid_categories_set.add(cat)
             continue
         for cat_in_path in path:
-            result[cat_in_path] += p.amount
+            result[cat_in_path] += signed_amount
     # Round all sums to zero decimal places
     for key in result:
         result[key] = round(result[key])
 
-    result = {k: v for k, v in result.items() if (k in ["no category", "invalid category", "metadata"] or v >= 80)}
+    result = {k: -v for k, v in result.items() if v != 0.0}
 
     result["metadata"] = {
         "total sum": total_sum,
@@ -108,6 +110,8 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
 def build_sankey_data(result: dict, category_tree: dict):
     """
     Build Sankey diagram nodes and links from aggregation result and category tree.
+    Exclude nodes with value 0 and links to/from such nodes.
+    If a node has a negative value, create a link from child to parent.
     """
     nodes = []
     node_map = {}
@@ -140,6 +144,12 @@ def build_sankey_data(result: dict, category_tree: dict):
                     "target": node_map[k],
                     "value": value
                 })
+            elif value < 0:
+                links.append({
+                    "source": node_map[k],
+                    "target": node_map[parent],
+                    "value": abs(value)
+                })
             if isinstance(v, dict):
                 traverse(v, k)
 
@@ -152,15 +162,53 @@ def build_sankey_data(result: dict, category_tree: dict):
                 "target": node_map[top_cat],
                 "value": value
             })
+        elif value < 0:
+            links.append({
+                "source": node_map[top_cat],
+                "target": node_map["Total Sum"],
+                "value": abs(value)
+            })
         traverse(category_tree[top_cat], top_cat)
 
     for special in ["no category", "invalid category"]:
-        if result.get(special, 0) > 0:
+        val = result.get(special, 0)
+        if val > 0:
             add_node(special)
             links.append({
                 "source": node_map["Total Sum"],
                 "target": node_map[special],
-                "value": result[special]
+                "value": val
+            })
+        elif val < 0:
+            add_node(special)
+            links.append({
+                "source": node_map[special],
+                "target": node_map["Total Sum"],
+                "value": abs(val)
             })
 
-    return {"nodes": nodes, "links": links}
+    # Filter out nodes with value 0
+    filtered_nodes = [n for n in nodes if n["value"] != 0]
+    valid_names = set(n["name"] for n in filtered_nodes)
+    # Map node name to new index
+    name_to_new_idx = {n["name"]: i for i, n in enumerate(filtered_nodes)}
+
+    # Filter links to only those whose source and target are in valid_names
+    filtered_links = []
+    for l in links:
+        src_name = None
+        tgt_name = None
+        # Find names by old index
+        for name, old_idx in node_map.items():
+            if old_idx == l["source"]:
+                src_name = name
+            if old_idx == l["target"]:
+                tgt_name = name
+        if src_name in valid_names and tgt_name in valid_names:
+            filtered_links.append({
+                "source": name_to_new_idx[src_name],
+                "target": name_to_new_idx[tgt_name],
+                "value": l["value"]
+            })
+
+    return {"nodes": filtered_nodes, "links": filtered_links}

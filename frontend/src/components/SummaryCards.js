@@ -23,6 +23,12 @@ export default function SummaryCards({
   past7DaysSum,
   past30DaysSum,
 }) {
+  // Calculate date ranges for cards
+  const past7Start = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+  const past7End = now;
+  const past30Start = new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000);
+  const past30End = now;
+
   // Compose all cards with their sums and render info
   const cards = [
     {
@@ -31,23 +37,23 @@ export default function SummaryCards({
       sum: totalSum,
       caption: "All time",
       gradient: "linear-gradient(135deg, #111827, #1f2937)",
-      onClick: () => onCardClick && onCardClick("total"),
+      onClick: () => onCardClick && onCardClick({ type: "total", start: null, end: null }),
     },
     {
       key: "past7",
       label: "Past 7 Days",
       sum: past7DaysSum,
-      caption: `${format(now, "MMM d")} – ${format(new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000), "MMM d, yyyy")}`,
+      caption: `${format(past7End, "MMM d")} – ${format(past7Start, "MMM d, yyyy")}`,
       gradient: "linear-gradient(135deg, #be185d, #f472b6)",
-      onClick: () => onCardClick && onCardClick("past7"),
+      onClick: () => onCardClick && onCardClick({ type: "past7", start: past7Start, end: past7End }),
     },
     {
       key: "past30",
       label: "Past 30 Days",
       sum: past30DaysSum,
-      caption: `${format(now, "MMM d")} – ${format(new Date(now.getTime() - 29 * 24 * 60 * 60 * 1000), "MMM d, yyyy")}`,
+      caption: `${format(past30End, "MMM d")} – ${format(past30Start, "MMM d, yyyy")}`,
       gradient: "linear-gradient(135deg, #f59e42, #fbbf24)",
-      onClick: () => onCardClick && onCardClick("past30"),
+      onClick: () => onCardClick && onCardClick({ type: "past30", start: past30Start, end: past30End }),
     },
   ];
 
@@ -59,7 +65,7 @@ export default function SummaryCards({
       sum: customSum,
       caption: `${format(dateRange[0], "MMM d")} – ${format(dateRange[1], "MMM d, yyyy")}`,
       gradient: "linear-gradient(135deg, #0ea5e9, #38bdf8)",
-      onClick: () => onCardClick && onCardClick("custom"),
+      onClick: () => onCardClick && onCardClick({ type: "custom", start: dateRange[0], end: dateRange[1] }),
     });
   }
 
