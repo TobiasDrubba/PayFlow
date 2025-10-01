@@ -24,8 +24,12 @@ class PaymentService:
     def __init__(self):
         self.payments: List[Payment] = get_all_payments()
         self.category_tree: Dict[str, Any] = load_category_tree()
+        valid_categories = set(get_all_child_categories(self.category_tree))
+        for p in self.payments:
+            if p.cust_category not in valid_categories and p.cust_category != "":
+                raise ValueError(f"Invalid cust_category '{p.cust_category}' in payment id {p.id}")
 
-    def list_categories(self) -> List[str]:
+    def child_categories(self) -> List[str]:
         # Return all child categories only
         return get_all_child_categories(self.category_tree)
 
@@ -36,7 +40,14 @@ class PaymentService:
     def _persist_payments(self):
         save_payments_to_csv(FILE_PATH, self.payments)
 
+    def _validate_category(self, cust_category: str) -> None:
+        # Security: Ensure cust_category is a valid child category
+        valid_categories = set(self.child_categories())
+        if cust_category not in valid_categories and cust_category != "":
+            raise ValueError(f"Invalid child category: {cust_category}")
+
     def update_payment_category(self, payment_id: str, cust_category: str) -> None:
+        self._validate_category(cust_category)
         updated = False
         for p in self.payments:
             if p.id == payment_id:
@@ -49,6 +60,7 @@ class PaymentService:
             raise ValueError(f"Payment with id {payment_id} not found")
 
     def update_merchant_categories(self, payment_id: str, cust_category: str) -> int:
+        self._validate_category(cust_category)
         merchant = None
         for p in self.payments:
             if p.id == payment_id:
@@ -92,7 +104,7 @@ class PaymentService:
 payment_service = PaymentService()
 
 def list_categories() -> List[str]:
-    return payment_service.list_categories()
+    return payment_service.child_categories()
 
 def update_payment_category(payment_id: str, cust_category: str) -> None:
     payment_service.update_payment_category(payment_id, cust_category)

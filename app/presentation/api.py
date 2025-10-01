@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -109,12 +109,15 @@ def update_categories_tree(req: CategoryTreeRequest):
 
 @app.patch("/payments/{payment_id}/category")
 def update_payment_cust_category(payment_id: str, req: UpdateCategoryRequest):
-    if req.all_for_merchant:
-        updated = update_merchant_categories(payment_id, req.cust_category)
-        return {"updated": updated}
-    else:
-        update_payment_category(payment_id, req.cust_category)
-        return {"updated": 1}
+    try:
+        if req.all_for_merchant:
+            updated = update_merchant_categories(payment_id, req.cust_category)
+            return {"updated": updated}
+        else:
+            update_payment_category(payment_id, req.cust_category)
+            return {"updated": 1}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/payments/aggregate")
 def aggregate_payments_endpoint(req: AggregateRequest):
