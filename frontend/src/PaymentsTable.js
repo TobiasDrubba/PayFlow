@@ -3,13 +3,8 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import {
-  Box,
   Typography,
-  Stack,
   CircularProgress,
-  Paper,
-  Chip,
-  Divider,
   Table,
   TableBody,
   TableCell,
@@ -19,6 +14,7 @@ import {
   Button,
 } from "@mui/material";
 import { fetchAggregation, fetchSumsForRanges } from "./api";
+import "./PaymentsTable.css";
 
 // Custom hooks
 import { usePayments } from "./hooks/usePayments";
@@ -65,7 +61,6 @@ export default function PaymentsTable() {
     custom: 0,
   });
 
-
   // Filter payments by search term
   const filteredPayments = useMemo(() => {
     if (!search) return payments;
@@ -77,7 +72,6 @@ export default function PaymentsTable() {
     );
   }, [payments, search]);
 
-  // Replace handleCategoryChangeWithDialog with direct call
   const handleCategoryChangeWithDialog = (payment, value) => {
     handleCategoryChange(payment, value, payments, setPayments);
   };
@@ -126,7 +120,6 @@ export default function PaymentsTable() {
     const nowDate = new Date();
     const toNaiveISOString = (d) => d ? d.toISOString().slice(0, 19) : null;
 
-    // If custom date range is set, only fetch for custom
     if (dateRange[0] && dateRange[1]) {
       const ranges = {
         custom: {
@@ -143,7 +136,6 @@ export default function PaymentsTable() {
       return;
     }
 
-    // Otherwise, fetch for the default cards only
     const ranges = {
       total: { start: null, end: null },
       past7: { start: toNaiveISOString(new Date(nowDate.getTime() - 6 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
@@ -156,18 +148,26 @@ export default function PaymentsTable() {
 
   if (loading) {
     return (
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
-        <Stack spacing={2} alignItems="center">
-          <CircularProgress size={56} thickness={4} />
-          <Typography variant="h6" sx={{ letterSpacing: 0.4, opacity: 0.8 }}>
+      <div className="payments-container">
+        <div className="loading-container">
+          <div className="loading-spinner">
+            <CircularProgress size={64} thickness={3.5} sx={{ color: '#667eea' }} />
+          </div>
+          <Typography className="loading-text">
             Preparing your beautiful dashboard…
           </Typography>
-        </Stack>
-      </Box>
+        </div>
+      </div>
     );
   }
 
-  if (error) return <Typography color="error">{error}</Typography>;
+  if (error) {
+    return (
+      <div className="payments-container">
+        <Typography color="error" sx={{ textAlign: 'center', mt: 4 }}>{error}</Typography>
+      </div>
+    );
+  }
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -187,41 +187,14 @@ export default function PaymentsTable() {
         title={aggregationTitle}
       />
 
-      <Box
-        sx={{
-          maxWidth: "1200px",
-          margin: "40px auto",
-          px: { xs: 2, md: 0 },
-          fontFamily: `"Inter", "SF Pro Display", "Segoe UI", Roboto, Arial, sans-serif`,
-        }}
-      >
+      <div className="payments-container animate-in">
         {/* Header */}
-        <Box
-          sx={{
-            mb: 3,
-            display: "flex",
-            alignItems: { xs: "flex-start", md: "center" },
-            justifyContent: "space-between",
-            flexDirection: { xs: "column", md: "row" },
-            gap: 2,
-          }}
-        >
-          <Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 800,
-                letterSpacing: -0.5,
-                lineHeight: 1.2,
-              }}
-            >
-              Payments Overview
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Track your transactions with a refined, modern interface.
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={2}>
+        <div className="page-header">
+          <div className="header-content">
+            <h1>Payments Overview</h1>
+            <p>Track your transactions with a refined, modern interface</p>
+          </div>
+          <div className="header-actions">
             <TableControls
               search={search}
               setSearch={setSearch}
@@ -232,15 +205,19 @@ export default function PaymentsTable() {
               toggleColumn={toggleColumn}
             />
             <Button
-              variant="contained"
-              color="secondary"
+              className="btn-secondary"
               onClick={() => setManagerOpen(true)}
-              sx={{ height: 40, alignSelf: "center" }}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 600,
+                height: '44px',
+                px: 3,
+              }}
             >
               Manage Categories
             </Button>
-          </Stack>
-        </Box>
+          </div>
+        </div>
 
         {/* Summary Cards */}
         <SummaryCards
@@ -254,55 +231,23 @@ export default function PaymentsTable() {
         />
 
         {/* File Upload UI */}
-        <FileUpload onSuccess={refetchPayments} />
+        <div className="file-upload-section">
+          <FileUpload onSuccess={refetchPayments} />
+        </div>
 
         {/* Table */}
-        <Paper
-          elevation={0}
-          sx={{
-            borderRadius: 3,
-            overflow: "hidden",
-            bgcolor: "background.paper",
-            border: (theme) => `1px solid ${theme.palette.divider}`,
-          }}
-        >
-          <Box
-            sx={{
-              px: 3,
-              py: 2,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              background: "linear-gradient(180deg, rgba(0,0,0,0.02), rgba(0,0,0,0))",
-            }}
-          >
-            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: 0.2 }}>
-              Transactions
-            </Typography>
-            <Chip
-              size="small"
-              label={`${filteredPayments.length} items`}
-              color="default"
-              variant="outlined"
-              sx={{ borderRadius: 2 }}
-            />
-          </Box>
-          <Divider />
+        <div className="table-container animate-in">
+          <div className="table-header">
+            <h2>Transactions</h2>
+            <span className="table-count">
+              {filteredPayments.length} {filteredPayments.length === 1 ? 'item' : 'items'}
+            </span>
+          </div>
 
           <TableContainer sx={{ maxHeight: "65vh" }}>
             <DragDropContext onDragEnd={onDragEnd}>
-              <Table stickyHeader size="medium" aria-label="payments table">
-                <TableHead
-                  sx={{
-                    "& .MuiTableCell-head": {
-                      bgcolor: "background.default",
-                      color: "text.secondary",
-                      fontWeight: 700,
-                      letterSpacing: 0.4,
-                      borderBottom: (t) => `1px solid ${t.palette.divider}`,
-                    },
-                  }}
-                >
+              <Table className="payments-table" stickyHeader size="medium" aria-label="payments table">
+                <TableHead>
                   <Droppable droppableId="columns" direction="horizontal">
                     {(provided) => (
                       <TableRow ref={provided.innerRef} {...provided.droppableProps}>
@@ -316,9 +261,13 @@ export default function PaymentsTable() {
                                   ref={dragProvided.innerRef}
                                   {...dragProvided.draggableProps}
                                   {...dragProvided.dragHandleProps}
+                                  className={snapshot.isDragging ? 'dragging' : ''}
                                   sx={{
-                                    cursor: "grab",
-                                    opacity: snapshot.isDragging ? 0.7 : 1,
+                                    cursor: snapshot.isDragging ? 'grabbing' : 'grab',
+                                    '&:hover': {
+                                      background: 'rgba(102,126,234,0.08)',
+                                      color: '#667eea',
+                                    }
                                   }}
                                 >
                                   {col.label}
@@ -332,16 +281,7 @@ export default function PaymentsTable() {
                     )}
                   </Droppable>
                 </TableHead>
-                <TableBody
-                  sx={{
-                    "& .MuiTableRow-root:hover": {
-                      background: "linear-gradient(90deg, rgba(99,102,241,0.06), rgba(99,102,241,0.00))",
-                    },
-                    "& .MuiTableCell-body": {
-                      borderBottom: (t) => `1px dashed ${t.palette.divider}`,
-                    },
-                  }}
-                >
+                <TableBody>
                   {filteredPayments.map((payment) => (
                     <PaymentTableRow
                       key={payment.id}
@@ -354,8 +294,9 @@ export default function PaymentsTable() {
                   ))}
                   {filteredPayments.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={visibleColumns.size || 1} align="center" sx={{ py: 6, color: "text.secondary" }}>
-                        No results. Try adjusting filters.
+                      <TableCell colSpan={visibleColumns.size || 1} className="empty-state">
+                        <div className="empty-state-icon">📭</div>
+                        <div className="empty-state-text">No results found. Try adjusting your filters.</div>
                       </TableCell>
                     </TableRow>
                   )}
@@ -363,8 +304,8 @@ export default function PaymentsTable() {
               </Table>
             </DragDropContext>
           </TableContainer>
-        </Paper>
-      </Box>
+        </div>
+      </div>
     </LocalizationProvider>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { Box, Stack, Button, Typography } from "@mui/material";
 import { uploadPaymentFiles } from "../api";
+import "./FileUpload.css";
 
 const paymentSourceOptions = [
   { value: "Alipay", label: "Alipay" },
@@ -51,63 +51,120 @@ export default function FileUpload({ onSuccess }) {
     setUploading(false);
   };
 
+  const formatFileSize = (bytes) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  const getFileIcon = (fileName) => {
+    const ext = fileName.split('.').pop().toLowerCase();
+    if (ext === 'csv') return '📊';
+    if (ext === 'xlsx' || ext === 'xls') return '📈';
+    return '📄';
+  };
+
   return (
-    <Box sx={{ mb: 2 }}>
-      <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
+    <div className={`upload-container ${uploadFiles.length > 0 ? 'has-files' : ''}`}>
+      {uploading && (
+        <div className="uploading-overlay">
+          <div className="uploading-content">
+            <div className="uploading-spinner"></div>
+            <div className="uploading-text">Uploading your files...</div>
+          </div>
+        </div>
+      )}
+
+      <div className="upload-header">
+        <div className="upload-icon">📤</div>
+        <div className="upload-header-text">
+          <h3>Upload Payment Files</h3>
+          <p>Select up to 3 CSV or Excel files to import transactions</p>
+        </div>
+      </div>
+
+      <div className="upload-actions">
         <input
           type="file"
           multiple
           accept=".csv,.xls,.xlsx"
           style={{ display: "none" }}
-          id="file-upload"
+          id="file-upload-input"
           onChange={handleFileChange}
           disabled={uploading}
         />
-        <label htmlFor="file-upload">
-          <Button variant="outlined" component="span" disabled={uploading}>
-            Select Files (max 3)
-          </Button>
+        <label htmlFor="file-upload-input">
+          <button
+            className="upload-btn select-files-btn"
+            disabled={uploading}
+            onClick={(e) => {
+              e.preventDefault();
+              document.getElementById('file-upload-input').click();
+            }}
+            type="button"
+          >
+            <span className="upload-btn-icon">📁</span>
+            <span>Select Files</span>
+          </button>
         </label>
-        {uploadFiles.map((f, idx) => (
-          <Stack key={f.file.name} direction="row" spacing={1} alignItems="center">
-            <Typography>{f.file.name}</Typography>
-            <select
-              value={f.type}
-              onChange={e => handleTypeChange(idx, e.target.value)}
-              disabled={uploading}
-              style={{ height: 32 }}
-            >
-              <option value="">Select Type</option>
-              {paymentSourceOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
-              ))}
-            </select>
-          </Stack>
-        ))}
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleUpload}
-          disabled={uploading || !uploadFiles.length || uploadFiles.some(f => !f.type)}
-        >
-          {uploading ? "Uploading..." : "Upload"}
-        </Button>
-        {uploadError && (
-          <Typography color="error" sx={{ ml: 2 }}>
-            {uploadError}
-          </Typography>
+
+        {uploadFiles.length > 0 && (
+          <button
+            className="upload-btn"
+            onClick={handleUpload}
+            disabled={uploading || !uploadFiles.length || uploadFiles.some(f => !f.type)}
+            type="button"
+          >
+            <span className="upload-btn-icon">⬆️</span>
+            <span>{uploading ? "Uploading..." : `Upload ${uploadFiles.length} ${uploadFiles.length === 1 ? 'File' : 'Files'}`}</span>
+          </button>
         )}
-      </Stack>
-      {successFiles.length > 0 && (
-        <Box sx={{ mt: 1 }}>
-          {successFiles.map(f => (
-            <Typography key={f.name} color="success.main">
-              Imported: {f.name} ({f.type})
-            </Typography>
+      </div>
+
+      {uploadFiles.length > 0 && (
+        <div className="file-list">
+          {uploadFiles.map((f, idx) => (
+            <div key={f.file.name} className="file-item">
+              <div className="file-icon">{getFileIcon(f.file.name)}</div>
+              <div className="file-info">
+                <p className="file-name">{f.file.name}</p>
+                <p className="file-size">{formatFileSize(f.file.size)}</p>
+              </div>
+              <select
+                className={`file-type-select ${!f.type ? 'empty' : ''}`}
+                value={f.type}
+                onChange={e => handleTypeChange(idx, e.target.value)}
+                disabled={uploading}
+              >
+                <option value="">Select Type</option>
+                {paymentSourceOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
           ))}
-        </Box>
+        </div>
       )}
-    </Box>
+
+      {uploadError && (
+        <div className="error-message">
+          <span className="error-icon">⚠️</span>
+          <span>{uploadError}</span>
+        </div>
+      )}
+
+      {successFiles.length > 0 && (
+        <div className="success-list">
+          {successFiles.map(f => (
+            <div key={f.name} className="success-item">
+              <span className="success-icon">✓</span>
+              <span>Successfully imported: {f.name} ({f.type})</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
-
