@@ -312,7 +312,6 @@
 }
 
 .payments-table tbody tr::before {
-  content: '';
   position: absolute;
   left: 0;
   right: 0;
