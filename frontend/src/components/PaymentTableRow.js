@@ -169,14 +169,24 @@ export default function PaymentTableRow({
           <TableCell key={`${payment.id}-cust_category`} sx={{ maxWidth: 200 }}>
             <Autocomplete
               size="small"
-              value={payment.cust_category || ""}
+              value={payment.cust_category || null}
               options={categories}
-              freeSolo
+              freeSolo={false}
               onChange={(_, value) => onCategoryChange(payment, value || "")}
               renderInput={params => (
-                <TextField {...params} variant="standard" placeholder="—" />
+                <TextField
+                  {...params}
+                  variant="standard"
+                  placeholder="—"
+                  InputProps={{
+                    ...params.InputProps,
+                    // Show clear button
+                    endAdornment: params.InputProps.endAdornment,
+                  }}
+                />
               )}
               sx={{ minWidth: 120 }}
+              clearOnEscape
             />
           </TableCell>
         );

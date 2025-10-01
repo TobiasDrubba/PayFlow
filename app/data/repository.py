@@ -12,7 +12,12 @@ from app.domain.models import Payment, PaymentSource, PaymentType
 load_dotenv()
 CSV_HEADER = ["id", "date", "amount", "currency", "merchant", "auto_category", "source", "type", "note", "cust_category"]
 FILE_PATH = os.getenv("PAYMENTS_CSV_PATH")
-CATEGORIES_JSON_PATH = os.getenv("CATEGORIES_JSON_PATH", "resources/categories.json")
+if not FILE_PATH:
+    raise RuntimeError("PAYMENTS_CSV_PATH environment variable is not set")
+
+CATEGORIES_JSON_PATH = os.getenv("CATEGORIES_JSON_PATH")
+if not CATEGORIES_JSON_PATH:
+    raise RuntimeError("CATEGORIES_JSON_PATH environment variable is not set")
 
 
 def load_payments_from_csv(csv_path: str) -> List[Payment]:

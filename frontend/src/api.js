@@ -1,4 +1,7 @@
-const API_URL = "http://localhost:8000"; // adjust to your backend URL/port
+const API_URL = process.env.REACT_APP_API_URL;
+if (!API_URL) {
+  throw new Error("REACT_APP_API_URL environment variable is not set");
+}
 
 export async function fetchPayments() {
   const response = await fetch(`${API_URL}/payments`);
@@ -7,20 +10,11 @@ export async function fetchPayments() {
 }
 
 export async function fetchCategories() {
-  const response = await fetch("http://localhost:8000/categories");
+  const response = await fetch(`${API_URL}/categories`);
   if (!response.ok) throw new Error("Failed to fetch categories");
   return response.json();
 }
 
-export async function addCategory(name) {
-  const response = await fetch("http://localhost:8000/categories", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name }),
-  });
-  if (!response.ok) throw new Error("Failed to add category");
-  return response.json();
-}
 
 export async function updatePaymentCategory(paymentId, custCategory, allForMerchant = false) {
   const response = await fetch(`${API_URL}/payments/${paymentId}/category`, {

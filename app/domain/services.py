@@ -1,6 +1,4 @@
-import os
 from typing import List, Dict, Any
-from dotenv import load_dotenv
 
 from app.domain.models import Payment
 from app.data.repository import (
@@ -14,11 +12,6 @@ from app.data.repository import (
 )
 from app.utils.aggregation import sum_payments_by_category, build_sankey_data
 from app.data.alipay_parser import parse_alipay_file
-
-import csv
-
-load_dotenv()
-CATEGORIES_CSV_PATH = os.getenv("CATEGORIES_CSV_PATH", "resources/categories.csv")
 
 class PaymentService:
     def __init__(self):
