@@ -65,3 +65,20 @@ export async function fetchSumsForRanges(ranges) {
   if (!response.ok) throw new Error("Failed to fetch sums for ranges");
   return response.json();
 }
+
+export async function uploadPaymentFiles(filesWithTypes) {
+  const formData = new FormData();
+  filesWithTypes.forEach(({ file, type }) => {
+    formData.append("files", file);
+    formData.append("types", type);
+  });
+  const response = await fetch(`${API_URL}/payments/import`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Upload failed");
+  }
+  return response.json();
+}

@@ -18,7 +18,7 @@ import {
   TableRow,
   Button,
 } from "@mui/material";
-import { fetchAggregation, fetchSumsForRanges } from "./api";
+import { fetchAggregation, fetchSumsForRanges, uploadPaymentFiles } from "./api";
 
 // Custom hooks
 import { usePayments } from "./hooks/usePayments";
@@ -153,6 +153,58 @@ export default function PaymentsTable() {
       .catch(() => {});
   }, [payments, dateRange]);
 
+  // File upload state
+  const [uploadFiles, setUploadFiles] = useState([]); // [{file, type}]
+  const [uploadError, setUploadError] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  // PaymentSource options (excluding "Other")
+    /*
+    class PaymentSource(Enum):
+    ALIPAY = "Alipay"
+    WECHAT = "WeChat"
+    TSINGHUA_CARD = "Tsinghua Card"
+     */
+  const paymentSourceOptions = [
+    { value: "Alipay", label: "Alipay" },
+    { value: "WeChat", label: "WeChat" },
+    { value: "Tsinghua Card", label: "Tsinghua Card" },
+  ];
+
+  const handleFileChange = (e) => {
+    setUploadError("");
+    const files = Array.from(e.target.files).slice(0, 3);
+    setUploadFiles(files.map(file => ({ file, type: "" })));
+  };
+
+  const handleTypeChange = (idx, type) => {
+    setUploadFiles(files =>
+      files.map((f, i) => (i === idx ? { ...f, type } : f))
+    );
+  };
+
+  const handleUpload = async () => {
+    setUploadError("");
+    if (!uploadFiles.length) {
+      setUploadError("Please select up to 3 files.");
+      return;
+    }
+    if (uploadFiles.some(f => !f.type)) {
+      setUploadError("Please select a type for each file.");
+      return;
+    }
+    setUploading(true);
+    try {
+      await uploadPaymentFiles(uploadFiles);
+      setUploadFiles([]);
+      setUploadError("");
+      refetchPayments();
+    } catch (err) {
+      setUploadError(err.message || "Upload failed");
+    }
+    setUploading(false);
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "60vh" }}>
@@ -251,6 +303,55 @@ export default function PaymentsTable() {
           past7DaysSum={summarySums.past7}
           past30DaysSum={summarySums.past30}
         />
+
+        {/* File Upload UI */}
+        <Box sx={{ mb: 2 }}>
+          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
+            <input
+              type="file"
+              multiple
+              accept=".csv,.xls,.xlsx"
+              style={{ display: "none" }}
+              id="file-upload"
+              onChange={handleFileChange}
+              disabled={uploading}
+            />
+            <label htmlFor="file-upload">
+              <Button variant="outlined" component="span" disabled={uploading}>
+                Select Files (max 3)
+              </Button>
+            </label>
+            {uploadFiles.map((f, idx) => (
+              <Stack key={f.file.name} direction="row" spacing={1} alignItems="center">
+                <Typography>{f.file.name}</Typography>
+                <select
+                  value={f.type}
+                  onChange={e => handleTypeChange(idx, e.target.value)}
+                  disabled={uploading}
+                  style={{ height: 32 }}
+                >
+                  <option value="">Select Type</option>
+                  {paymentSourceOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </Stack>
+            ))}
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleUpload}
+              disabled={uploading || !uploadFiles.length || uploadFiles.some(f => !f.type)}
+            >
+              {uploading ? "Uploading..." : "Upload"}
+            </Button>
+            {uploadError && (
+              <Typography color="error" sx={{ ml: 2 }}>
+                {uploadError}
+              </Typography>
+            )}
+          </Stack>
+        </Box>
 
         {/* Table */}
         <Paper
@@ -364,3 +465,4 @@ export default function PaymentsTable() {
     </LocalizationProvider>
   );
 }
+

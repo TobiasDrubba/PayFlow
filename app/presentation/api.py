@@ -3,11 +3,12 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body, UploadFile, File, Form
 from pydantic import BaseModel, Field, RootModel
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
-from app.domain.models import Payment
+from app.domain.models import Payment, PaymentSource
 from app.domain.services import list_payments
 # --- Add these imports ---
 from app.domain.services import (
@@ -18,9 +19,16 @@ from app.domain.services import (
     aggregate_payments_by_category,
     aggregate_payments_sankey,
     list_categories,
-    get_sums_for_ranges_service
+    get_sums_for_ranges_service,
+    import_alipay_payments,
+    import_wechat_payments,
+    import_tsinghua_card_payments,
+    import_payment_files_service,
 )
 from app.utils.sum import sum_payments_in_range
+
+import tempfile
+import shutil
 
 # --- Category models ---
 class CategoryRequest(BaseModel):
@@ -168,3 +176,19 @@ def get_sums_for_ranges(req: SumsRequest = Body(...)):
     """
     # Move logic to service layer
     return get_sums_for_ranges_service(req.root)
+
+@app.post("/payments/import")
+async def import_payments_endpoint(
+    files: list[UploadFile] = File(..., description="Up to 3 files"),
+    types: list[str] = Form(...)
+):
+    """
+    Import up to 3 payment files, each with its own type.
+    """
+    result = await import_payment_files_service(files, types)
+    if result.get("errors"):
+        return JSONResponse(
+            status_code=400,
+            content={"detail": f"Some files failed to import: {'; '.join(result['errors'])}", "imported": result["imported"]}
+        )
+    return {"imported": result["imported"]}

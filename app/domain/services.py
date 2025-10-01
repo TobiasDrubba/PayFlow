@@ -13,6 +13,11 @@ from app.data.repository import (
 from app.utils.aggregation import sum_payments_by_category, build_sankey_data
 from app.utils.sum import sum_payments_in_range
 from app.data.alipay_parser import parse_alipay_file
+import tempfile
+import shutil
+from app.domain.models import PaymentSource
+from fastapi import UploadFile
+import os
 
 class PaymentService:
     def __init__(self):
@@ -108,6 +113,50 @@ class PaymentService:
 
     def list_payments(self) -> List[Payment]:
         return self.payments
+
+async def import_payment_files_service(files: list, types: list) -> dict:
+    """
+    Handles importing up to 3 payment files, each with its own type.
+    Returns dict with keys: imported (int), errors (list).
+    """
+    if not files or len(files) > 3:
+        return {"imported": 0, "errors": ["Select 1-3 files."]}
+    if not types or len(types) != len(files):
+        return {"imported": 0, "errors": ["A type must be specified for each file."]}
+
+    import_funcs = {
+        PaymentSource.ALIPAY.value: import_alipay_payments,
+        PaymentSource.WECHAT.value: import_wechat_payments,
+        PaymentSource.TSINGHUA_CARD.value: import_tsinghua_card_payments,
+    }
+
+    imported = 0
+    errors = []
+    for file, type in zip(files, types):
+        if type not in import_funcs:
+            errors.append(f"{getattr(file, 'filename', str(file))}: Invalid or unsupported payment type.")
+            try:
+                file.file.close()
+            except Exception:
+                pass
+            continue
+        try:
+            # Preserve file extension for compatibility with openpyxl and pandas
+            filename = getattr(file, "filename", "upload")
+            _, ext = os.path.splitext(filename)
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+                shutil.copyfileobj(file.file, tmp)
+                tmp_path = tmp.name
+            imported += import_funcs[type](tmp_path)
+        except Exception as e:
+            errors.append(f"{getattr(file, 'filename', str(file))}: {str(e)}")
+        finally:
+            try:
+                file.file.close()
+            except Exception:
+                pass
+
+    return {"imported": imported, "errors": errors}
 
 def get_sums_for_ranges_service(ranges: Dict[str, Dict[str, Any]]) -> Dict[str, float]:
     payments = list_payments()
