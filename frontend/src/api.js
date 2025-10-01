@@ -55,3 +55,13 @@ export async function fetchAggregation({ start_date, end_date } = {}) {
   if (!response.ok) throw new Error("Failed to fetch aggregation data");
   return response.json();
 }
+
+export async function fetchSumsForRanges(ranges) {
+  const response = await fetch(`${API_URL}/payments/sums`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(ranges),
+  });
+  if (!response.ok) throw new Error("Failed to fetch sums for ranges");
+  return response.json();
+}

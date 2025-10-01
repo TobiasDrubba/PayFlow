@@ -11,6 +11,7 @@ from app.data.repository import (
     save_category_tree,
 )
 from app.utils.aggregation import sum_payments_by_category, build_sankey_data
+from app.utils.sum import sum_payments_in_range
 from app.data.alipay_parser import parse_alipay_file
 
 class PaymentService:
@@ -107,6 +108,15 @@ class PaymentService:
 
     def list_payments(self) -> List[Payment]:
         return self.payments
+
+def get_sums_for_ranges_service(ranges: Dict[str, Dict[str, Any]]) -> Dict[str, float]:
+    payments = list_payments()
+    result = {}
+    for name, range_dict in ranges.items():
+        start = range_dict.get("start")
+        end = range_dict.get("end")
+        result[name] = sum_payments_in_range(payments, start, end)
+    return result
 
 # Singleton instance for use in API
 payment_service = PaymentService()

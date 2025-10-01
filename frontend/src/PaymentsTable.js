@@ -18,10 +18,10 @@ import {
   TableRow,
   Button,
 } from "@mui/material";
-import { fetchAggregation } from "./api";
+import { fetchAggregation, fetchSumsForRanges } from "./api";
 
 // Custom hooks
-import { usePayments, usePaymentSums } from "./hooks/usePayments";
+import { usePayments } from "./hooks/usePayments";
 import { useCategories } from "./hooks/useCategories";
 import { useTableColumns } from "./hooks/useTableColumns";
 
@@ -53,7 +53,17 @@ export default function PaymentsTable() {
     onDragEnd
   } = useTableColumns();
 
-  const { totalSum, monthlySum, customSum, now } = usePaymentSums(payments, dateRange);
+  const now = useMemo(() => new Date(), []);
+
+  const [summarySums, setSummarySums] = useState({
+    total: 0,
+    month: 0,
+    past7: 0,
+    past30: 0,
+    past90: 0,
+    custom: 0,
+  });
+
 
   // Filter payments by search term
   const filteredPayments = useMemo(() => {
@@ -109,6 +119,29 @@ export default function PaymentsTable() {
     }
     setAggregationLoading(false);
   };
+
+  React.useEffect(() => {
+    if (!payments.length) return;
+    const nowDate = new Date();
+    // Helper to get ISO string without timezone
+    const toNaiveISOString = (d) => d ? d.toISOString().slice(0, 19) : null;
+    const ranges = {
+      total: { start: null, end: null },
+      past7: { start: toNaiveISOString(new Date(nowDate.getTime() - 6 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
+      past30: { start: toNaiveISOString(new Date(nowDate.getTime() - 29 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
+    };
+    if (dateRange[0] && dateRange[1]) {
+      ranges.custom = {
+        start: toNaiveISOString(dateRange[0]),
+        end: toNaiveISOString(dateRange[1]),
+      };
+    } else {
+      ranges.custom = { start: null, end: null };
+    }
+    fetchSumsForRanges(ranges)
+      .then(setSummarySums)
+      .catch(() => {});
+  }, [payments, dateRange]);
 
   if (loading) {
     return (
@@ -200,12 +233,13 @@ export default function PaymentsTable() {
 
         {/* Summary Cards */}
         <SummaryCards
-          totalSum={totalSum}
-          monthlySum={monthlySum}
-          customSum={customSum}
+          totalSum={summarySums.total}
+          customSum={summarySums.custom}
           now={now}
           dateRange={dateRange}
           onCardClick={handleSummaryCardClick}
+          past7DaysSum={summarySums.past7}
+          past30DaysSum={summarySums.past30}
         />
 
         {/* Table */}

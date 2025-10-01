@@ -3,8 +3,8 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Body
+from pydantic import BaseModel, Field, RootModel
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.domain.models import Payment
@@ -17,8 +17,10 @@ from app.domain.services import (
     update_category_tree,
     aggregate_payments_by_category,
     aggregate_payments_sankey,
-    list_categories
+    list_categories,
+    get_sums_for_ranges_service
 )
+from app.utils.sum import sum_payments_in_range
 
 # --- Category models ---
 class CategoryRequest(BaseModel):
@@ -36,6 +38,9 @@ class UpdateCategoryRequest(BaseModel):
 class AggregateRequest(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+
+class SumsRequest(RootModel):
+    root: Dict[str, Dict[str, Optional[datetime]]] = Field(..., description="Mapping from name to {start, end}")
 
 # --- Endpoints ---
 
@@ -155,3 +160,11 @@ def aggregate_payments_sankey_endpoint(req: SankeyAggregateRequest):
         end_date=req.end_date
     )
     return result
+
+@app.post("/payments/sums")
+def get_sums_for_ranges(req: SumsRequest = Body(...)):
+    """
+    Returns a mapping {name: sum} for each named date range.
+    """
+    # Move logic to service layer
+    return get_sums_for_ranges_service(req.root)
