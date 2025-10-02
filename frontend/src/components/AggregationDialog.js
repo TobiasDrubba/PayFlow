@@ -1,4 +1,3 @@
-
 import React from "react";
 import {
   Dialog,
@@ -9,8 +8,10 @@ import {
   Typography,
   CircularProgress,
   Box,
+  IconButton,
 } from "@mui/material";
 import { ResponsiveSankey } from "@nivo/sankey";
+import { Fullscreen, FullscreenExit } from "@mui/icons-material";
 
 // Color palette for nodes
 const COLORS = [
@@ -50,12 +51,22 @@ export default function AggregationDialog({
   }, [data]);
 
   const formatValue = React.useCallback((v) => new Intl.NumberFormat().format(v), []);
+  const [fullScreen, setFullScreen] = React.useState(false);
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xl">
-      <DialogTitle>{title || "Aggregation Results"}</DialogTitle>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="xl" fullScreen={fullScreen}>
+      <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span>{title || "Aggregation Results"}</span>
+        <IconButton
+          onClick={() => setFullScreen((v) => !v)}
+          size="small"
+          aria-label={fullScreen ? "Exit Full Screen" : "Full Screen"}
+        >
+          {fullScreen ? <FullscreenExit /> : <Fullscreen />}
+        </IconButton>
+      </DialogTitle>
 
-      <DialogContent sx={{ height: "80vh", p: 2 }}>
+      <DialogContent sx={{ height: fullScreen ? "100vh" : "80vh", p: 2 }}>
         {loading && (
           <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
             <CircularProgress />
