@@ -101,3 +101,16 @@ export async function downloadAllPayments() {
   a.remove();
   window.URL.revokeObjectURL(url);
 }
+
+export async function submitCustomPayment(payment) {
+  const response = await fetch(`${API_URL}/payments`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payment),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to submit payment");
+  }
+  return response.json();
+}

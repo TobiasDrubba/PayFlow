@@ -251,6 +251,8 @@ export default function PaymentsTable() {
         orderedColumns={orderedColumns}
         visibleColumns={visibleColumns}
         toggleColumn={toggleColumn}
+        categories={categories}
+        refetchPayments={refetchPayments}
       />
 
       <div className="payments-container animate-in">
