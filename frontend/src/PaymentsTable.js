@@ -314,7 +314,7 @@ export default function PaymentsTable() {
             onClick={() => setUploadDialogOpen(true)}
             className="btn-primary upload-btn"
           >
-            Upload Transactions
+            Upload
           </Button>
         </Box>
 
