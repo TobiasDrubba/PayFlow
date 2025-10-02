@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 
 from app.domain.models import Payment, PaymentType
-from app.data.repository import (
+from app.data.payment_repository import (
     get_all_payments,
     save_payments_to_csv,
     FILE_PATH,
@@ -12,11 +12,10 @@ from app.data.repository import (
 )
 from app.utils.aggregation import sum_payments_by_category, build_sankey_data
 from app.utils.sum import sum_payments_in_range
-from app.data.alipay_parser import parse_alipay_file
+from app.utils.alipay_parser import parse_alipay_file
 import tempfile
 import shutil
 from app.domain.models import PaymentSource
-from fastapi import UploadFile
 import os
 from fastapi.responses import StreamingResponse
 import io
@@ -101,14 +100,14 @@ class PaymentService:
         return added
 
     def import_wechat_payments(self, source_filepath: str) -> int:
-        from app.data.wechat_parser import parse_wechat_file
+        from app.utils.wechat_parser import parse_wechat_file
         payments = parse_wechat_file(source_filepath)
         added = upsert_payments_to_csv(payments)
         self.payments = get_all_payments()
         return added
 
     def import_tsinghua_card_payments(self, source_filepath: str) -> int:
-        from app.data.tsinghua_card_parser import parse_tsinghua_card_file
+        from app.utils.tsinghua_card_parser import parse_tsinghua_card_file
         payments = parse_tsinghua_card_file(source_filepath)
         added = upsert_payments_to_csv(payments)
         self.payments = get_all_payments()

@@ -153,5 +153,3 @@ def get_all_child_categories(tree: dict = None) -> list:
 
     collect(tree)
     return sorted(result)
-
-

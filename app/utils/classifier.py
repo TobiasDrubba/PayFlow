@@ -1,6 +1,6 @@
 import os
 from transformers import pipeline
-from app.data.repository import get_all_payments, save_payments_to_csv, FILE_PATH
+from app.data.payment_repository import get_all_payments, save_payments_to_csv, FILE_PATH
 from app.domain.models import Payment
 from dotenv import load_dotenv
 import csv

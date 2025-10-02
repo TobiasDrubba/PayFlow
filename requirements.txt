@@ -4,3 +4,7 @@ python-dotenv
 openpyxl
 uvicorn[standard]
 python-multipart
+sqlalchemy
+passlib
+jose
+psycopg2-binary

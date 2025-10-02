@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Optional
 
 
 class PaymentSource(Enum):
@@ -35,3 +36,9 @@ class Payment:
             raise ValueError("Payment amount cannot be zero.")
         if not self.currency:
             raise ValueError("Currency must be provided.")
+
+@dataclass
+class User:
+    id: int
+    username: str
+    hashed_password: str

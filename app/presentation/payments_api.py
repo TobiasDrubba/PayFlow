@@ -1,16 +1,12 @@
-# app/presentation/api.py
 from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Body, UploadFile, File, Form, Request
+from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form, Request, Depends
 from pydantic import BaseModel, Field, RootModel
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from app.domain.models import Payment
-from app.domain.services import list_payments
-# --- Add these imports ---
-from app.domain.services import (
+from app.domain.payment_service import list_payments
+from app.domain.payment_service import (
     update_payment_category,
     update_merchant_categories,
     get_category_tree,
@@ -43,10 +39,6 @@ class AggregateRequest(BaseModel):
 class SumsRequest(RootModel):
     root: Dict[str, Dict[str, Optional[datetime]]] = Field(..., description="Mapping from name to {start, end}")
 
-# --- Endpoints ---
-
-
-
 class PaymentResponse(BaseModel):
     id: str
     date: datetime
@@ -74,46 +66,27 @@ class PaymentResponse(BaseModel):
             cust_category=p.category,
         )
 
+router = APIRouter(prefix="/payments", tags=["payments"])
 
-app = FastAPI(title="Payment API", version="1.0.0")
-
-
-# CORS config
-origins = [
-    "http://localhost:3000",  # React dev server
-    "http://127.0.0.1:3000",  # sometimes needed for localhost variants
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-@app.get("/payments", response_model=List[PaymentResponse])
+@router.get("", response_model=List[PaymentResponse])
 def get_all_payments_endpoint() -> List[PaymentResponse]:
-    """
-    Returns all existing payments from persistent storage.
-    """
     payments = list_payments()
     return [PaymentResponse.from_domain(p) for p in payments]
 
-@app.get("/categories", response_model=List[str])
+@router.get("/categories", response_model=List[str])
 def get_categories():
     return list_categories()
 
-@app.get("/categories/tree", response_model=Dict[str, Any])
+@router.get("/categories/tree", response_model=Dict[str, Any])
 def get_categories_tree():
     return get_category_tree()
 
-@app.put("/categories/tree")
+@router.put("/categories/tree")
 def update_categories_tree(req: CategoryTreeRequest):
     update_category_tree(req.tree)
     return {"status": "updated"}
 
-@app.patch("/payments/{payment_id}/category")
+@router.patch("/{payment_id}/category")
 def update_payment_cust_category(payment_id: str, req: UpdateCategoryRequest):
     try:
         if req.all_for_merchant:
@@ -125,15 +98,10 @@ def update_payment_cust_category(payment_id: str, req: UpdateCategoryRequest):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/payments/aggregate")
+@router.post("/aggregate")
 def aggregate_payments_endpoint(req: AggregateRequest):
-    """
-    Aggregates payments by category tree for a given date range.
-    Returns nodes and links for Sankey diagram.
-    """
     payments = list_payments()
     category_tree = get_category_tree()
-    # Delegate aggregation logic to service layer
     result = aggregate_payments_by_category(
         payments,
         category_tree,
@@ -146,14 +114,10 @@ class SankeyAggregateRequest(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
 
-@app.post("/payments/aggregate/sankey")
+@router.post("/aggregate/sankey")
 def aggregate_payments_sankey_endpoint(req: SankeyAggregateRequest):
-    """
-    Aggregates payments and returns Sankey diagram data: nodes and links.
-    """
     payments = list_payments()
     category_tree = get_category_tree()
-    # Delegate Sankey aggregation logic to service layer
     result = aggregate_payments_sankey(
         payments,
         category_tree,
@@ -162,35 +126,26 @@ def aggregate_payments_sankey_endpoint(req: SankeyAggregateRequest):
     )
     return result
 
-@app.post("/payments/sums")
+@router.post("/sums")
 def get_sums_for_ranges(req: SumsRequest = Body(...)):
-    """
-    Returns a mapping {name: sum} for each named date range.
-    """
-    # Move logic to service layer
     return get_sums_for_ranges_service(req.root)
 
-@app.post("/payments/import")
+@router.post("/import")
 async def import_payments_endpoint(
     files: list[UploadFile] = File(..., description="Up to 3 files"),
     types: list[str] = Form(...)
 ):
-    """
-    Import up to 3 payment files, each with its own type.
-    """
     result = await import_payment_files_service(files, types)
     if result.get("errors"):
+        from fastapi.responses import JSONResponse
         return JSONResponse(
             status_code=400,
             content={"detail": f"Some files failed to import: {'; '.join(result['errors'])}", "imported": result["imported"]}
         )
     return {"imported": result["imported"]}
 
-@app.get("/payments/download")
+@router.get("/download")
 def download_all_payments():
-    """
-    Download all payments as a CSV file.
-    """
     return get_payments_csv_stream()
 
 class SubmitPaymentRequest(BaseModel):
@@ -203,13 +158,9 @@ class SubmitPaymentRequest(BaseModel):
     note: Optional[str] = ""
     category: Optional[str] = ""
 
-@app.post("/payments", response_model=PaymentResponse)
+@router.post("", response_model=PaymentResponse)
 def submit_payment(req: SubmitPaymentRequest):
-    """
-    Submit a new payment. The id is set to 'custom+{date}'.
-    """
-    from app.domain.services import submit_custom_payment
-
+    from app.domain.payment_service import submit_custom_payment
     try:
         payment = submit_custom_payment(
             date=req.date,
@@ -228,14 +179,12 @@ def submit_payment(req: SubmitPaymentRequest):
 class DeletePaymentsRequest(BaseModel):
     ids: List[str]
 
-@app.post("/payments/delete")
+@router.post("/delete")
 def delete_payments(req: DeletePaymentsRequest):
-    """
-    Delete payments by their IDs.
-    """
-    from app.domain.services import delete_payments_by_ids
+    from app.domain.payment_service import delete_payments_by_ids
     try:
         deleted = delete_payments_by_ids(req.ids)
         return {"deleted": deleted}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
