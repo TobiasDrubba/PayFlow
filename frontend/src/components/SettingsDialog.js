@@ -37,6 +37,12 @@ export default function SettingsDialog({
   const handleOpenMenu = (e) => setAnchorEl(e.currentTarget);
   const handleCloseMenu = () => setAnchorEl(null);
 
+  // Logout handler
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    window.location.reload();
+  };
+
   return (
     <>
       <Dialog
@@ -180,6 +186,20 @@ export default function SettingsDialog({
                 sx={{ mt: 1 }}
               >
                 Download All Payments
+              </Button>
+            </Box>
+            {/* Logout Button */}
+            <Divider />
+            <Box>
+              <Button
+                variant="outlined"
+                color="error"
+                fullWidth
+                onClick={handleLogout}
+                className="logout-btn"
+                sx={{ mt: 1 }}
+              >
+                Logout
               </Button>
             </Box>
           </Stack>

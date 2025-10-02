@@ -555,3 +555,14 @@ select:focus-visible {
   background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%) !important;
 }
 
+.logout-btn {
+  background: linear-gradient(135deg, #ea6666 0%, #a24b4b 100%) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  height: 48px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+.logout-btn:hover {
+  background: #d9363e !important;
+}
