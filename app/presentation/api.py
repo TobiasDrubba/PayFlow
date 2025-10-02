@@ -192,3 +192,35 @@ def download_all_payments():
     Download all payments as a CSV file.
     """
     return get_payments_csv_stream()
+
+class SubmitPaymentRequest(BaseModel):
+    date: datetime
+    amount: float
+    currency: str
+    merchant: str
+    type: str
+    source: Optional[str] = None
+    note: Optional[str] = ""
+    category: Optional[str] = ""
+
+@app.post("/payments", response_model=PaymentResponse)
+def submit_payment(req: SubmitPaymentRequest):
+    """
+    Submit a new payment. The id is set to 'custom+{date}'.
+    """
+    from app.domain.services import submit_custom_payment
+
+    try:
+        payment = submit_custom_payment(
+            date=req.date,
+            amount=req.amount,
+            currency=req.currency,
+            merchant=req.merchant,
+            payment_type=req.type,
+            source=req.source,
+            note=req.note,
+            category=req.category,
+        )
+        return PaymentResponse.from_domain(payment)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

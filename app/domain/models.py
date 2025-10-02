@@ -23,11 +23,11 @@ class Payment:
     amount: float
     currency: str
     merchant: str
-    auto_category: str
     source: PaymentSource
     type: PaymentType
     note: str = ""
     category: str = ""
+    auto_category: str = "Uncategorized"
 
     def __post_init__(self):
         # Basic validation

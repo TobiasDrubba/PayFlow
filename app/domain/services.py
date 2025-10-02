@@ -1,6 +1,6 @@
 from typing import List, Dict, Any
 
-from app.domain.models import Payment
+from app.domain.models import Payment, PaymentType
 from app.data.repository import (
     get_all_payments,
     save_payments_to_csv,
@@ -149,6 +149,57 @@ class PaymentService:
             headers={"Content-Disposition": "attachment; filename=payments.csv"}
         )
 
+    def submit_custom_payment(self, date, amount, currency, merchant, payment_type, source=None, note="", category=""):
+        """
+        Create and persist a custom payment. The id is set to 'custom+{date}'.
+        """
+        # Validate and convert type/source
+        try:
+            payment_type = PaymentType(payment_type)
+        except Exception:
+            raise ValueError("Invalid payment type")
+
+        if source is None:
+            payment_source = PaymentSource.OTHER
+        else:
+            try:
+                payment_source = PaymentSource(source)
+            except Exception:
+                raise ValueError("Invalid payment source")
+
+        # id: "custom+{date}"
+        import uuid
+        payment_id = str(uuid.uuid5(uuid.NAMESPACE_DNS,f"{date.isoformat()}|{amount}|{currency}|{merchant}|{payment_type}|{source}|{note}|{category}"))
+
+        # Validate category if provided
+        if category:
+            valid_categories = set(self.child_categories())
+            if category not in valid_categories:
+                raise ValueError(f"Invalid child category: {category}")
+
+        payment = Payment(
+            id=payment_id,
+            date=date,
+            amount=amount,
+            currency=currency,
+            merchant=merchant,
+            auto_category="",  # must not be provided
+            category=category or "",
+            source=payment_source,
+            type=payment_type,
+            note=note or "",
+        )
+
+        # Check for duplicate id
+        if any(p.id == payment_id for p in self.payments):
+            raise ValueError(f"Payment with id {payment_id} already exists")
+
+        # Add and persist
+        self.payments.append(payment)
+        self._persist_payments()
+        return payment
+
+
 async def import_payment_files_service(files: list, types: list) -> dict:
     """
     Handles importing up to 3 payment files, each with its own type.
@@ -245,3 +296,6 @@ def aggregate_payments_sankey(payments: List[Payment], category_tree: dict, star
 
 def get_payments_csv_stream():
     return payment_service.get_payments_csv_stream()
+
+def submit_custom_payment(date, amount, currency, merchant, payment_type, source=None, note="", category=""):
+    return payment_service.submit_custom_payment(date, amount, currency, merchant, payment_type, source, note, category)
