@@ -10,12 +10,12 @@ export function useCategories(refetchPayments) {
 
   // Fetch categories and category tree on mount
   useEffect(() => {
-    fetchCategories()
-      .then(setCategories)
-      .catch(() => setCategories([]));
     fetchCategoryTree()
       .then(setCategoryTree)
       .catch(() => setCategoryTree({}));
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, []);
 
   // Update category tree
@@ -29,6 +29,9 @@ export function useCategories(refetchPayments) {
       .catch(() => {
         enqueueSnackbar && enqueueSnackbar("Failed to update categories", { variant: "error" });
       });
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
   };
 
   // Helper to check if all merchant's transactions have the same category

@@ -250,7 +250,7 @@ export default function PaymentsTable() {
         {/* Header */}
         <div className="page-header">
           <div className="header-content">
-            <h1>Payments Overview</h1>
+            <h1>Payment Overview</h1>
             <p>Track your transactions with a refined, modern interface</p>
           </div>
           <div className="header-actions">
