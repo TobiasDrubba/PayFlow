@@ -114,3 +114,16 @@ export async function submitCustomPayment(payment) {
   }
   return response.json();
 }
+
+export async function deletePayments(ids) {
+  const response = await fetch(`${API_URL}/payments/delete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ids }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete payments");
+  }
+  return response.json();
+}

@@ -199,6 +199,17 @@ class PaymentService:
         self._persist_payments()
         return payment
 
+    def delete_payments_by_ids(self, ids: list) -> int:
+        """
+        Delete payments with the given IDs. Returns the number deleted.
+        """
+        before = len(self.payments)
+        self.payments = [p for p in self.payments if p.id not in ids]
+        deleted = before - len(self.payments)
+        if deleted > 0:
+            self._persist_payments()
+        return deleted
+
 
 async def import_payment_files_service(files: list, types: list) -> dict:
     """
@@ -299,3 +310,6 @@ def get_payments_csv_stream():
 
 def submit_custom_payment(date, amount, currency, merchant, payment_type, source=None, note="", category=""):
     return payment_service.submit_custom_payment(date, amount, currency, merchant, payment_type, source, note, category)
+
+def delete_payments_by_ids(ids: list) -> int:
+    return payment_service.delete_payments_by_ids(ids)

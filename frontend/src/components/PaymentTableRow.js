@@ -18,7 +18,10 @@ export default function PaymentTableRow({
   orderedColumns,
   visibleColumns,
   categories,
-  onCategoryChange
+  onCategoryChange,
+  selected = false,
+  onRowClick,
+  onRowContextMenu,
 }) {
   const isPositive = (t) => t === "income" || t === "refund";
   const isAbort = (t) => t === "abort";
@@ -197,7 +200,15 @@ export default function PaymentTableRow({
   };
 
   return (
-    <TableRow key={payment.id} hover>
+    <TableRow
+      key={payment.id}
+      hover
+      selected={selected}
+      sx={selected ? { backgroundColor: "rgba(102,126,234,0.08) !important" } : {}}
+      onClick={onRowClick ? (e) => onRowClick(payment, e) : undefined}
+      onContextMenu={onRowContextMenu ? (e) => onRowContextMenu(payment, e) : undefined}
+      style={{ cursor: "pointer" }}
+    >
       {orderedColumns.map(col => {
         if (!visibleColumns.has(col.id)) return null;
         return renderCell(col);

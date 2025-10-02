@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, HTTPException, Body, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, Body, UploadFile, File, Form, Request
 from pydantic import BaseModel, Field, RootModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -223,4 +223,19 @@ def submit_payment(req: SubmitPaymentRequest):
         )
         return PaymentResponse.from_domain(payment)
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+class DeletePaymentsRequest(BaseModel):
+    ids: List[str]
+
+@app.post("/payments/delete")
+def delete_payments(req: DeletePaymentsRequest):
+    """
+    Delete payments by their IDs.
+    """
+    from app.domain.services import delete_payments_by_ids
+    try:
+        deleted = delete_payments_by_ids(req.ids)
+        return {"deleted": deleted}
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

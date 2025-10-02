@@ -19,9 +19,11 @@ import {
   DialogTitle,
   DialogContent,
   IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { Search as SearchIcon, Upload as UploadIcon, Settings as SettingsIcon, Close as CloseIcon } from "@mui/icons-material";
-import { fetchAggregation, fetchSumsForRanges } from "./api";
+import { fetchAggregation, fetchSumsForRanges, deletePayments } from "./api";
 import "./PaymentsTable.css";
 
 // Custom hooks
@@ -70,6 +72,10 @@ export default function PaymentsTable() {
   // Dialog states
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [contextMenu, setContextMenu] = useState(null);
 
   // Filter payments by search term
   const filteredPayments = useMemo(() => {
@@ -167,6 +173,57 @@ export default function PaymentsTable() {
       .then(setSummarySums)
       .catch(() => {});
   }, [payments, dateRange]);
+
+  // Handle row selection
+  const handleRowClick = (payment, event) => {
+    if (event.ctrlKey || event.metaKey) {
+      setSelectedIds((prev) =>
+        prev.includes(payment.id)
+          ? prev.filter((id) => id !== payment.id)
+          : [...prev, payment.id]
+      );
+    } else if (event.shiftKey && selectedIds.length > 0) {
+      const lastIndex = filteredPayments.findIndex((p) => p.id === selectedIds[selectedIds.length - 1]);
+      const thisIndex = filteredPayments.findIndex((p) => p.id === payment.id);
+      if (lastIndex !== -1 && thisIndex !== -1) {
+        const [start, end] = [lastIndex, thisIndex].sort((a, b) => a - b);
+        const rangeIds = filteredPayments.slice(start, end + 1).map((p) => p.id);
+        setSelectedIds(Array.from(new Set([...selectedIds, ...rangeIds])));
+      }
+    } else {
+      setSelectedIds([payment.id]);
+    }
+  };
+
+  // Context menu handlers
+  const handleRowContextMenu = (payment, event) => {
+    event.preventDefault();
+    if (!selectedIds.includes(payment.id)) {
+      setSelectedIds([payment.id]);
+    }
+    setContextMenu(
+      contextMenu === null
+        ? { mouseX: event.clientX - 2, mouseY: event.clientY - 4 }
+        : null
+    );
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const handleDeleteSelected = async () => {
+    handleCloseContextMenu();
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`Delete ${selectedIds.length} selected payment(s)?`)) return;
+    try {
+      await deletePayments(selectedIds);
+      setSelectedIds([]);
+      refetchPayments();
+    } catch (e) {
+      alert("Failed to delete payments.");
+    }
+  };
 
   if (loading) {
     return (
@@ -382,6 +439,9 @@ export default function PaymentsTable() {
                       visibleColumns={visibleColumns}
                       categories={categories}
                       onCategoryChange={handleCategoryChangeWithDialog}
+                      selected={selectedIds.includes(payment.id)}
+                      onRowClick={handleRowClick}
+                      onRowContextMenu={handleRowContextMenu}
                     />
                   ))}
                   {filteredPayments.length === 0 && (
@@ -397,6 +457,21 @@ export default function PaymentsTable() {
             </DragDropContext>
           </TableContainer>
         </div>
+        {/* Context Menu for Delete */}
+        <Menu
+          open={contextMenu !== null}
+          onClose={handleCloseContextMenu}
+          anchorReference="anchorPosition"
+          anchorPosition={
+            contextMenu !== null
+              ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+              : undefined
+          }
+        >
+          <MenuItem onClick={handleDeleteSelected} disabled={selectedIds.length === 0}>
+            Delete {selectedIds.length > 1 ? "Selected Payments" : "Payment"}
+          </MenuItem>
+        </Menu>
       </div>
     </LocalizationProvider>
   );
