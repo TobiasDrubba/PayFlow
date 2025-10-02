@@ -29,6 +29,7 @@ class Payment:
     note: str = ""
     category: str = ""
     auto_category: str = "Uncategorized"
+    user_id: int = None  # New: associate payment with user
 
     def __post_init__(self):
         # Basic validation
@@ -42,3 +43,9 @@ class User:
     id: int
     username: str
     hashed_password: str
+
+@dataclass
+class CategoryTree:
+    id: int
+    user_id: int
+    tree_json: str

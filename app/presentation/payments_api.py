@@ -18,6 +18,9 @@ from app.domain.payment_service import (
     import_payment_files_service,
     get_payments_csv_stream,
 )
+from sqlalchemy.orm import Session
+from app.data.payment_repository import SessionLocal
+from app.domain.user_service import get_current_user
 
 # --- Category models ---
 class CategoryRequest(BaseModel):
@@ -68,40 +71,69 @@ class PaymentResponse(BaseModel):
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 @router.get("", response_model=List[PaymentResponse])
-def get_all_payments_endpoint() -> List[PaymentResponse]:
-    payments = list_payments()
+def get_all_payments_endpoint(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+) -> List[PaymentResponse]:
+    payments = list_payments(db, current_user.id)
     return [PaymentResponse.from_domain(p) for p in payments]
 
 @router.get("/categories", response_model=List[str])
-def get_categories():
-    return list_categories()
+def get_categories(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    return list_categories(db, current_user.id)
 
 @router.get("/categories/tree", response_model=Dict[str, Any])
-def get_categories_tree():
-    return get_category_tree()
+def get_categories_tree(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    return get_category_tree(db, current_user.id)
 
 @router.put("/categories/tree")
-def update_categories_tree(req: CategoryTreeRequest):
-    update_category_tree(req.tree)
+def update_categories_tree(
+    req: CategoryTreeRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    update_category_tree(req.tree, db, current_user.id)
     return {"status": "updated"}
 
 @router.patch("/{payment_id}/category")
-def update_payment_cust_category(payment_id: str, req: UpdateCategoryRequest):
+def update_payment_cust_category(
+    payment_id: str,
+    req: UpdateCategoryRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     try:
         if req.all_for_merchant:
-            updated = update_merchant_categories(payment_id, req.cust_category)
+            updated = update_merchant_categories(payment_id, req.cust_category, db, current_user.id)
             return {"updated": updated}
         else:
-            update_payment_category(payment_id, req.cust_category)
+            update_payment_category(payment_id, req.cust_category, db, current_user.id)
             return {"updated": 1}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/aggregate")
-def aggregate_payments_endpoint(req: AggregateRequest):
-    payments = list_payments()
-    category_tree = get_category_tree()
+def aggregate_payments_endpoint(
+    req: AggregateRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    payments = list_payments(db, current_user.id)
+    category_tree = get_category_tree(db, current_user.id)
     result = aggregate_payments_by_category(
         payments,
         category_tree,
@@ -115,9 +147,13 @@ class SankeyAggregateRequest(BaseModel):
     end_date: Optional[datetime] = None
 
 @router.post("/aggregate/sankey")
-def aggregate_payments_sankey_endpoint(req: SankeyAggregateRequest):
-    payments = list_payments()
-    category_tree = get_category_tree()
+def aggregate_payments_sankey_endpoint(
+    req: SankeyAggregateRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    payments = list_payments(db, current_user.id)
+    category_tree = get_category_tree(db, current_user.id)
     result = aggregate_payments_sankey(
         payments,
         category_tree,
@@ -127,15 +163,21 @@ def aggregate_payments_sankey_endpoint(req: SankeyAggregateRequest):
     return result
 
 @router.post("/sums")
-def get_sums_for_ranges(req: SumsRequest = Body(...)):
-    return get_sums_for_ranges_service(req.root)
+def get_sums_for_ranges(
+    req: SumsRequest = Body(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    return get_sums_for_ranges_service(req.root, db, current_user.id)
 
 @router.post("/import")
 async def import_payments_endpoint(
     files: list[UploadFile] = File(..., description="Up to 3 files"),
-    types: list[str] = Form(...)
+    types: list[str] = Form(...),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
 ):
-    result = await import_payment_files_service(files, types)
+    result = await import_payment_files_service(files, types, db, current_user.id)
     if result.get("errors"):
         from fastapi.responses import JSONResponse
         return JSONResponse(
@@ -145,8 +187,11 @@ async def import_payments_endpoint(
     return {"imported": result["imported"]}
 
 @router.get("/download")
-def download_all_payments():
-    return get_payments_csv_stream()
+def download_all_payments(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
+    return get_payments_csv_stream(db, current_user.id)
 
 class SubmitPaymentRequest(BaseModel):
     date: datetime
@@ -159,7 +204,11 @@ class SubmitPaymentRequest(BaseModel):
     category: Optional[str] = ""
 
 @router.post("", response_model=PaymentResponse)
-def submit_payment(req: SubmitPaymentRequest):
+def submit_payment(
+    req: SubmitPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     from app.domain.payment_service import submit_custom_payment
     try:
         payment = submit_custom_payment(
@@ -168,6 +217,8 @@ def submit_payment(req: SubmitPaymentRequest):
             currency=req.currency,
             merchant=req.merchant,
             payment_type=req.type,
+            db=db,
+            user_id=current_user.id,
             source=req.source,
             note=req.note,
             category=req.category,
@@ -180,11 +231,14 @@ class DeletePaymentsRequest(BaseModel):
     ids: List[str]
 
 @router.post("/delete")
-def delete_payments(req: DeletePaymentsRequest):
+def delete_payments(
+    req: DeletePaymentsRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user)
+):
     from app.domain.payment_service import delete_payments_by_ids
     try:
-        deleted = delete_payments_by_ids(req.ids)
+        deleted = delete_payments_by_ids(req.ids, db, current_user.id)
         return {"deleted": deleted}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-

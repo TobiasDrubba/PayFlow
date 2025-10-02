@@ -13,11 +13,13 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
     """
 
     def collect_paths(tree, path=None, paths=None):
+        if tree is None:
+            return paths if paths is not None else []
         if paths is None:
             paths = []
         if path is None:
             path = []
-        for k, v in tree.items():
+        for k, v in (tree.items() if isinstance(tree, dict) else []):
             current_path = path + [k]
             if v is None:
                 paths.append(current_path)
@@ -135,7 +137,9 @@ def build_sankey_data(result: dict, category_tree: dict):
 
     links = []
     def traverse(tree, parent):
-        for k, v in tree.items():
+        if tree is None:
+            return
+        for k, v in (tree.items() if isinstance(tree, dict) else []):
             add_node(k)
             value = result.get(k, 0)
             if value > 0:
@@ -153,7 +157,7 @@ def build_sankey_data(result: dict, category_tree: dict):
             if isinstance(v, dict):
                 traverse(v, k)
 
-    for top_cat in category_tree:
+    for top_cat in (category_tree or {}):
         add_node(top_cat)
         value = result.get(top_cat, 0)
         if value > 0:
@@ -198,7 +202,7 @@ def build_sankey_data(result: dict, category_tree: dict):
     for l in links:
         src_name = None
         tgt_name = None
-        # Find names by old index
+        # Find names by old idx
         for name, old_idx in node_map.items():
             if old_idx == l["source"]:
                 src_name = name

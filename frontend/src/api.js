@@ -3,14 +3,23 @@ if (!API_URL) {
   throw new Error("REACT_APP_API_URL environment variable is not set");
 }
 
+function authHeaders() {
+  const token = localStorage.getItem("token");
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export async function fetchPayments() {
-  const response = await fetch(`${API_URL}/payments`);
+  const response = await fetch(`${API_URL}/payments`, {
+    headers: { ...authHeaders() }
+  });
   if (!response.ok) throw new Error("Failed to fetch payments");
   return response.json();
 }
 
 export async function fetchCategories() {
-  const response = await fetch(`${API_URL}/categories`);
+  const response = await fetch(`${API_URL}/payments/categories`, {
+    headers: { ...authHeaders() }
+  });
   if (!response.ok) throw new Error("Failed to fetch categories");
   return response.json();
 }
@@ -19,7 +28,7 @@ export async function fetchCategories() {
 export async function updatePaymentCategory(paymentId, custCategory, allForMerchant = false) {
   const response = await fetch(`${API_URL}/payments/${paymentId}/category`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ cust_category: custCategory, all_for_merchant: allForMerchant }),
   });
   if (!response.ok) throw new Error("Failed to update payment category");
@@ -27,15 +36,17 @@ export async function updatePaymentCategory(paymentId, custCategory, allForMerch
 }
 
 export async function fetchCategoryTree() {
-  const response = await fetch(`${API_URL}/categories/tree`);
+  const response = await fetch(`${API_URL}/payments/categories/tree`, {
+    headers: { ...authHeaders() }
+  });
   if (!response.ok) throw new Error("Failed to fetch category tree");
   return response.json();
 }
 
 export async function updateCategoryTree(tree) {
-  const response = await fetch(`${API_URL}/categories/tree`, {
+  const response = await fetch(`${API_URL}/payments/categories/tree`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ tree }),
   });
   if (!response.ok) throw new Error("Failed to update category tree");
@@ -49,7 +60,7 @@ export async function fetchAggregation({ start_date, end_date } = {}) {
   if (end_date) body.end_date = end_date;
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(body),
   });
   if (!response.ok) throw new Error("Failed to fetch aggregation data");
@@ -59,7 +70,7 @@ export async function fetchAggregation({ start_date, end_date } = {}) {
 export async function fetchSumsForRanges(ranges) {
   const response = await fetch(`${API_URL}/payments/sums`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(ranges),
   });
   if (!response.ok) throw new Error("Failed to fetch sums for ranges");
@@ -74,6 +85,7 @@ export async function uploadPaymentFiles(filesWithTypes) {
   });
   const response = await fetch(`${API_URL}/payments/import`, {
     method: "POST",
+    headers: { ...authHeaders() },
     body: formData,
   });
   if (!response.ok) {
@@ -86,7 +98,7 @@ export async function uploadPaymentFiles(filesWithTypes) {
 export async function downloadAllPayments() {
   const response = await fetch(`${API_URL}/payments/download`, {
     method: "GET",
-    headers: {},
+    headers: { ...authHeaders() },
   });
   if (!response.ok) throw new Error("Failed to download payments");
   const blob = await response.blob();
@@ -105,7 +117,7 @@ export async function downloadAllPayments() {
 export async function submitCustomPayment(payment) {
   const response = await fetch(`${API_URL}/payments`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(payment),
   });
   if (!response.ok) {
@@ -118,12 +130,40 @@ export async function submitCustomPayment(payment) {
 export async function deletePayments(ids) {
   const response = await fetch(`${API_URL}/payments/delete`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ ids }),
   });
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
     throw new Error(err.detail || "Failed to delete payments");
+  }
+  return response.json();
+}
+
+export async function loginUser(username, password) {
+  const response = await fetch(`${API_URL}/auth/token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ username, password }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Login failed");
+  }
+  const data = await response.json();
+  localStorage.setItem("token", data.access_token);
+  return data;
+}
+
+export async function registerUser(username, password) {
+  const response = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || "Registration failed");
   }
   return response.json();
 }

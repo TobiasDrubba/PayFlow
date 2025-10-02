@@ -1,14 +1,14 @@
 from typing import List, Dict, Any
-
+from sqlalchemy.orm import Session
 from app.domain.models import Payment, PaymentType
 from app.data.payment_repository import (
     get_all_payments,
-    save_payments_to_csv,
-    FILE_PATH,
-    upsert_payments_to_csv,
-    load_category_tree,
-    get_all_child_categories,
+    save_payments,
+    upsert_payments,
+    get_category_tree,
     save_category_tree,
+    get_all_child_categories,
+    create_payment_tables,
 )
 from app.utils.aggregation import sum_payments_by_category, build_sankey_data
 from app.utils.sum import sum_payments_in_range
@@ -20,210 +20,184 @@ import os
 from fastapi.responses import StreamingResponse
 import io
 import csv
+import json
 
-class PaymentService:
-    def __init__(self):
-        self.payments: List[Payment] = get_all_payments()
-        self.category_tree: Dict[str, Any] = load_category_tree()
-        valid_categories = set(get_all_child_categories(self.category_tree))
-        for p in self.payments:
-            if p.category not in valid_categories and p.category != "":
-                raise ValueError(f"Invalid cust_category '{p.category}' in payment id {p.id}")
+create_payment_tables()
 
-    def child_categories(self) -> List[str]:
-        # Return all child categories only
-        return get_all_child_categories(self.category_tree)
+def child_categories(db: Session, user_id: int) -> List[str]:
+    tree = get_category_tree(db, user_id)
+    return get_all_child_categories(tree)
 
-    def update_category_tree(self, new_tree: Dict[str, Any]) -> None:
-        # Identify deleted child categories
-        old_child_categories = set(get_all_child_categories(self.category_tree))
-        new_child_categories = set(get_all_child_categories(new_tree))
-        deleted_categories = old_child_categories - new_child_categories
+def _validate_category(db: Session, user_id: int, cust_category: str) -> None:
+    valid_categories = set(child_categories(db, user_id))
+    if cust_category not in valid_categories and cust_category != "":
+        raise ValueError(f"Invalid child category: {cust_category}")
 
-        # Remove deleted categories from payments
-        changed = False
-        for p in self.payments:
-            if p.category in deleted_categories:
-                p.category = ""
-                changed = True
-        if changed:
-            self._persist_payments()
+def update_category_tree(new_tree: Dict[str, Any], db: Session, user_id: int) -> None:
+    old_tree = get_category_tree(db, user_id)
+    old_child_categories = set(get_all_child_categories(old_tree))
+    new_child_categories = set(get_all_child_categories(new_tree))
+    deleted_categories = old_child_categories - new_child_categories
+    payments = get_all_payments(db, user_id)
+    changed = False
+    for p in payments:
+        if p.category in deleted_categories:
+            p.category = ""
+            changed = True
+    if changed:
+        save_payments(db, payments, user_id)
+    save_category_tree(db, user_id, new_tree)
 
-        # Now update the tree
-        save_category_tree(new_tree)
-        self.category_tree = new_tree
+def update_payment_category(payment_id: str, cust_category: str, db: Session, user_id: int) -> None:
+    _validate_category(db, user_id, cust_category)
+    payments = get_all_payments(db, user_id)
+    updated = False
+    for p in payments:
+        if p.id == payment_id:
+            p.category = cust_category
+            updated = True
+            break
+    if updated:
+        save_payments(db, payments, user_id)
+    else:
+        raise ValueError(f"Payment with id {payment_id} not found")
 
-    def _persist_payments(self):
-        save_payments_to_csv(FILE_PATH, self.payments)
+def update_merchant_categories(payment_id: str, cust_category: str, db: Session, user_id: int) -> int:
+    _validate_category(db, user_id, cust_category)
+    payments = get_all_payments(db, user_id)
+    merchant = None
+    for p in payments:
+        if p.id == payment_id:
+            merchant = p.merchant
+            break
+    if merchant is None:
+        raise ValueError(f"Payment with id {payment_id} not found")
+    count = 0
+    for p in payments:
+        if p.merchant == merchant:
+            p.category = cust_category
+            count += 1
+    if count > 0:
+        save_payments(db, payments, user_id)
+    return count
 
-    def _validate_category(self, cust_category: str) -> None:
-        # Security: Ensure cust_category is a valid child category
-        valid_categories = set(self.child_categories())
-        if cust_category not in valid_categories and cust_category != "":
-            raise ValueError(f"Invalid child category: {cust_category}")
+def import_alipay_payments(source_filepath: str, db: Session, user_id: int) -> int:
+    payments = parse_alipay_file(source_filepath)
+    for p in payments:
+        p.user_id = user_id
+    added = upsert_payments(db, payments, user_id)
+    return added
 
-    def update_payment_category(self, payment_id: str, cust_category: str) -> None:
-        self._validate_category(cust_category)
-        updated = False
-        for p in self.payments:
-            if p.id == payment_id:
-                p.category = cust_category
-                updated = True
-                break
-        if updated:
-            self._persist_payments()
-        else:
-            raise ValueError(f"Payment with id {payment_id} not found")
+def import_wechat_payments(source_filepath: str, db: Session, user_id: int) -> int:
+    from app.utils.wechat_parser import parse_wechat_file
+    payments = parse_wechat_file(source_filepath)
+    for p in payments:
+        p.user_id = user_id
+    added = upsert_payments(db, payments, user_id)
+    return added
 
-    def update_merchant_categories(self, payment_id: str, cust_category: str) -> int:
-        self._validate_category(cust_category)
-        merchant = None
-        for p in self.payments:
-            if p.id == payment_id:
-                merchant = p.merchant
-                break
-        if merchant is None:
-            raise ValueError(f"Payment with id {payment_id} not found")
-        count = 0
-        for p in self.payments:
-            if p.merchant == merchant:
-                p.category = cust_category
-                count += 1
-        if count > 0:
-            self._persist_payments()
-        return count
+def import_tsinghua_card_payments(source_filepath: str, db: Session, user_id: int) -> int:
+    from app.utils.tsinghua_card_parser import parse_tsinghua_card_file
+    payments = parse_tsinghua_card_file(source_filepath)
+    for p in payments:
+        p.user_id = user_id
+    added = upsert_payments(db, payments, user_id)
+    return added
 
-    def import_alipay_payments(self, source_filepath: str) -> int:
-        payments = parse_alipay_file(source_filepath)
-        added = upsert_payments_to_csv(payments)
-        self.payments = get_all_payments()
-        return added
+def list_payments(db: Session, user_id: int) -> List[Payment]:
+    return get_all_payments(db, user_id)
 
-    def import_wechat_payments(self, source_filepath: str) -> int:
-        from app.utils.wechat_parser import parse_wechat_file
-        payments = parse_wechat_file(source_filepath)
-        added = upsert_payments_to_csv(payments)
-        self.payments = get_all_payments()
-        return added
-
-    def import_tsinghua_card_payments(self, source_filepath: str) -> int:
-        from app.utils.tsinghua_card_parser import parse_tsinghua_card_file
-        payments = parse_tsinghua_card_file(source_filepath)
-        added = upsert_payments_to_csv(payments)
-        self.payments = get_all_payments()
-        return added
-
-    def list_payments(self) -> List[Payment]:
-        return self.payments
-
-    def get_payments_csv_stream(self):
-        """
-        Returns a StreamingResponse with all payments as a CSV file.
-        """
-        output = io.StringIO()
-        writer = csv.writer(output)
-        # Write header
+def get_payments_csv_stream(db: Session, user_id: int):
+    payments = get_all_payments(db, user_id)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow([
+        "id", "date", "amount", "currency", "merchant",
+        "auto_category", "source", "type", "note", "cust_category"
+    ])
+    for p in payments:
         writer.writerow([
-            "id", "date", "amount", "currency", "merchant",
-            "auto_category", "source", "type", "note", "cust_category"
+            p.id,
+            p.date.isoformat(),
+            p.amount,
+            p.currency,
+            p.merchant,
+            p.auto_category,
+            p.source.value if hasattr(p.source, "value") else str(p.source),
+            p.type.value if hasattr(p.type, "value") else str(p.type),
+            p.note or "",
+            p.category or "",
         ])
-        # Write rows
-        for p in self.payments:
-            writer.writerow([
-                p.id,
-                p.date.isoformat(),
-                p.amount,
-                p.currency,
-                p.merchant,
-                p.auto_category,
-                p.source.value if hasattr(p.source, "value") else str(p.source),
-                p.type.value if hasattr(p.type, "value") else str(p.type),
-                p.note or "",
-                p.category or "",
-            ])
-        output.seek(0)
-        return StreamingResponse(
-            output,
-            media_type="text/csv",
-            headers={"Content-Disposition": "attachment; filename=payments.csv"}
-        )
+    output.seek(0)
+    return StreamingResponse(
+        output,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=payments.csv"}
+    )
 
-    def submit_custom_payment(self, date, amount, currency, merchant, payment_type, source=None, note="", category=""):
-        """
-        Create and persist a custom payment. The id is set to 'custom+{date}'.
-        """
-        # Validate and convert type/source
+def submit_custom_payment(date, amount, currency, merchant, payment_type, db: Session, user_id: int, source=None, note="", category=""):
+    try:
+        payment_type_enum = PaymentType(payment_type)
+    except Exception:
+        raise ValueError("Invalid payment type")
+
+    if source is None:
+        payment_source = PaymentSource.OTHER
+    else:
         try:
-            payment_type = PaymentType(payment_type)
+            payment_source = PaymentSource(source)
         except Exception:
-            raise ValueError("Invalid payment type")
+            raise ValueError("Invalid payment source")
 
-        if source is None:
-            payment_source = PaymentSource.OTHER
-        else:
-            try:
-                payment_source = PaymentSource(source)
-            except Exception:
-                raise ValueError("Invalid payment source")
+    import uuid
+    payment_id = str(uuid.uuid5(uuid.NAMESPACE_DNS,f"{date.isoformat()}|{amount}|{currency}|{merchant}|{payment_type}|{source}|{note}|{category}|{user_id}"))
 
-        # id: "custom+{date}"
-        import uuid
-        payment_id = str(uuid.uuid5(uuid.NAMESPACE_DNS,f"{date.isoformat()}|{amount}|{currency}|{merchant}|{payment_type}|{source}|{note}|{category}"))
+    if category:
+        valid_categories = set(child_categories(db, user_id))
+        if category not in valid_categories:
+            raise ValueError(f"Invalid child category: {category}")
 
-        # Validate category if provided
-        if category:
-            valid_categories = set(self.child_categories())
-            if category not in valid_categories:
-                raise ValueError(f"Invalid child category: {category}")
+    payment = Payment(
+        id=payment_id,
+        date=date,
+        amount=amount,
+        currency=currency,
+        merchant=merchant,
+        auto_category="",
+        category=category or "",
+        source=payment_source,
+        type=payment_type_enum,
+        note=note or "",
+        user_id=user_id,
+    )
 
-        payment = Payment(
-            id=payment_id,
-            date=date,
-            amount=amount,
-            currency=currency,
-            merchant=merchant,
-            auto_category="",  # must not be provided
-            category=category or "",
-            source=payment_source,
-            type=payment_type,
-            note=note or "",
-        )
+    payments = get_all_payments(db, user_id)
+    if any(p.id == payment_id for p in payments):
+        raise ValueError(f"Payment with id {payment_id} already exists")
 
-        # Check for duplicate id
-        if any(p.id == payment_id for p in self.payments):
-            raise ValueError(f"Payment with id {payment_id} already exists")
+    payments.append(payment)
+    save_payments(db, payments, user_id)
+    return payment
 
-        # Add and persist
-        self.payments.append(payment)
-        self._persist_payments()
-        return payment
+def delete_payments_by_ids(ids: list, db: Session, user_id: int) -> int:
+    payments = get_all_payments(db, user_id)
+    before = len(payments)
+    payments = [p for p in payments if p.id not in ids]
+    deleted = before - len(payments)
+    if deleted > 0:
+        save_payments(db, payments, user_id)
+    return deleted
 
-    def delete_payments_by_ids(self, ids: list) -> int:
-        """
-        Delete payments with the given IDs. Returns the number deleted.
-        """
-        before = len(self.payments)
-        self.payments = [p for p in self.payments if p.id not in ids]
-        deleted = before - len(self.payments)
-        if deleted > 0:
-            self._persist_payments()
-        return deleted
-
-
-async def import_payment_files_service(files: list, types: list) -> dict:
-    """
-    Handles importing up to 3 payment files, each with its own type.
-    Returns dict with keys: imported (int), errors (list).
-    """
+async def import_payment_files_service(files: list, types: list, db: Session, user_id: int) -> dict:
     if not files or len(files) > 3:
         return {"imported": 0, "errors": ["Select 1-3 files."]}
     if not types or len(types) != len(files):
         return {"imported": 0, "errors": ["A type must be specified for each file."]}
 
     import_funcs = {
-        PaymentSource.ALIPAY.value: import_alipay_payments,
-        PaymentSource.WECHAT.value: import_wechat_payments,
-        PaymentSource.TSINGHUA_CARD.value: import_tsinghua_card_payments,
+        PaymentSource.ALIPAY.value: lambda path: import_alipay_payments(path, db, user_id),
+        PaymentSource.WECHAT.value: lambda path: import_wechat_payments(path, db, user_id),
+        PaymentSource.TSINGHUA_CARD.value: lambda path: import_tsinghua_card_payments(path, db, user_id),
     }
 
     imported = 0
@@ -237,7 +211,6 @@ async def import_payment_files_service(files: list, types: list) -> dict:
                 pass
             continue
         try:
-            # Preserve file extension for compatibility with openpyxl and pandas
             filename = getattr(file, "filename", "upload")
             _, ext = os.path.splitext(filename)
             with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
@@ -254,8 +227,8 @@ async def import_payment_files_service(files: list, types: list) -> dict:
 
     return {"imported": imported, "errors": errors}
 
-def get_sums_for_ranges_service(ranges: Dict[str, Dict[str, Any]]) -> Dict[str, float]:
-    payments = list_payments()
+def get_sums_for_ranges_service(ranges: Dict[str, Dict[str, Any]], db: Session, user_id: int) -> Dict[str, float]:
+    payments = get_all_payments(db, user_id)
     result = {}
     for name, range_dict in ranges.items():
         start = range_dict.get("start")
@@ -263,52 +236,13 @@ def get_sums_for_ranges_service(ranges: Dict[str, Dict[str, Any]]) -> Dict[str, 
         result[name] = sum_payments_in_range(payments, start, end)
     return result
 
-# Singleton instance for use in API
-payment_service = PaymentService()
-
-def list_categories() -> List[str]:
-    return payment_service.child_categories()
-
-def update_payment_category(payment_id: str, cust_category: str) -> None:
-    payment_service.update_payment_category(payment_id, cust_category)
-
-def update_merchant_categories(payment_id: str, cust_category: str) -> int:
-    return payment_service.update_merchant_categories(payment_id, cust_category)
-
-def import_alipay_payments(source_filepath: str) -> int:
-    return payment_service.import_alipay_payments(source_filepath)
-
-def import_wechat_payments(source_filepath: str) -> int:
-    return payment_service.import_wechat_payments(source_filepath)
-
-def import_tsinghua_card_payments(source_filepath: str) -> int:
-    return payment_service.import_tsinghua_card_payments(source_filepath)
-
-def get_category_tree():
-    return payment_service.category_tree
-
-def update_category_tree(new_tree: Dict[str, Any]) -> None:
-    payment_service.update_category_tree(new_tree)
-
-def list_payments() -> List[Payment]:
-    return payment_service.list_payments()
+def list_categories(db: Session, user_id: int) -> List[str]:
+    return child_categories(db, user_id)
 
 def aggregate_payments_by_category(payments: List[Payment], category_tree: dict, start_date=None, end_date=None):
     return sum_payments_by_category(payments, category_tree, start_date, end_date)
 
 def aggregate_payments_sankey(payments: List[Payment], category_tree: dict, start_date=None, end_date=None):
-    """
-    Aggregates payments and returns Sankey diagram data: nodes and links.
-    """
     result = sum_payments_by_category(payments, category_tree, start_date, end_date)
     sankey_data = build_sankey_data(result, category_tree)
     return sankey_data
-
-def get_payments_csv_stream():
-    return payment_service.get_payments_csv_stream()
-
-def submit_custom_payment(date, amount, currency, merchant, payment_type, source=None, note="", category=""):
-    return payment_service.submit_custom_payment(date, amount, currency, merchant, payment_type, source, note, category)
-
-def delete_payments_by_ids(ids: list) -> int:
-    return payment_service.delete_payments_by_ids(ids)
