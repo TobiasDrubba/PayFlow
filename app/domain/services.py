@@ -28,8 +28,8 @@ class PaymentService:
         self.category_tree: Dict[str, Any] = load_category_tree()
         valid_categories = set(get_all_child_categories(self.category_tree))
         for p in self.payments:
-            if p.cust_category not in valid_categories and p.cust_category != "":
-                raise ValueError(f"Invalid cust_category '{p.cust_category}' in payment id {p.id}")
+            if p.category not in valid_categories and p.category != "":
+                raise ValueError(f"Invalid cust_category '{p.category}' in payment id {p.id}")
 
     def child_categories(self) -> List[str]:
         # Return all child categories only
@@ -44,8 +44,8 @@ class PaymentService:
         # Remove deleted categories from payments
         changed = False
         for p in self.payments:
-            if p.cust_category in deleted_categories:
-                p.cust_category = ""
+            if p.category in deleted_categories:
+                p.category = ""
                 changed = True
         if changed:
             self._persist_payments()
@@ -68,7 +68,7 @@ class PaymentService:
         updated = False
         for p in self.payments:
             if p.id == payment_id:
-                p.cust_category = cust_category
+                p.category = cust_category
                 updated = True
                 break
         if updated:
@@ -88,7 +88,7 @@ class PaymentService:
         count = 0
         for p in self.payments:
             if p.merchant == merchant:
-                p.cust_category = cust_category
+                p.category = cust_category
                 count += 1
         if count > 0:
             self._persist_payments()
@@ -140,7 +140,7 @@ class PaymentService:
                 p.source.value if hasattr(p.source, "value") else str(p.source),
                 p.type.value if hasattr(p.type, "value") else str(p.type),
                 p.note or "",
-                p.cust_category or "",
+                p.category or "",
             ])
         output.seek(0)
         return StreamingResponse(
@@ -245,12 +245,3 @@ def aggregate_payments_sankey(payments: List[Payment], category_tree: dict, star
 
 def get_payments_csv_stream():
     return payment_service.get_payments_csv_stream()
-
-if __name__ == '__main__':
-    # get file path from options
-    import sys
-    if len(sys.argv) < 2:
-        print("Usage: python -m app.data.services <filepathAlipay> <filepathWeChat> <filepathTsinghuaCard>")
-    else:
-        filepathTsinghua = sys.argv[1]
-        import_tsinghua_card_payments(filepathTsinghua)

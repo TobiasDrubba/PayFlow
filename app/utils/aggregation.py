@@ -76,7 +76,7 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
     for p in filtered_payments:
         signed_amount = get_signed_amount(p)
         total_sum += signed_amount
-        cat = p.cust_category.strip() if p.cust_category else None
+        cat = p.category.strip() if p.category else None
         if not cat:
             result["no category"] += signed_amount
             continue

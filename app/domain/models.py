@@ -27,7 +27,7 @@ class Payment:
     source: PaymentSource
     type: PaymentType
     note: str = ""
-    cust_category: str = ""
+    category: str = ""
 
     def __post_init__(self):
         # Basic validation

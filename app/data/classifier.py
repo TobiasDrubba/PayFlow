@@ -31,7 +31,7 @@ def classify_payments():
 
     updated = False
     for p in payments:
-        if not p.cust_category:
+        if not p.category:
             t_m = translate_text(p.merchant)
             t_n = translate_text(p.note)
             input_text = f"{t_m} {t_n}"
@@ -39,7 +39,7 @@ def classify_payments():
             top_label = result['labels'][0]
             top_score = result['scores'][0]
             if top_score > 0.4:
-                p.cust_category = top_label
+                p.category = top_label
                 updated = True
                 print(f"1     Payment {t_m}-{t_n}: classified as '{top_label}' ({round(top_score * 100)}%)")
             else:

@@ -68,7 +68,7 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
                 source=PaymentSource.TSINGHUA_CARD,
                 type=p_type,
                 note= "Remaining Balance: " + row[DETAILS_COL] if row[DETAILS_COL] else "",
-                cust_category = cust_category
+                category= cust_category
             )
             payments.append(payment)
         except Exception as e:

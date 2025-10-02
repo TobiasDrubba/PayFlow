@@ -20,12 +20,8 @@ from app.domain.services import (
     list_categories,
     get_sums_for_ranges_service,
     import_payment_files_service,
-    get_payments_csv_stream,  # <-- add this import
+    get_payments_csv_stream,
 )
-from app.utils.sum import sum_payments_in_range
-
-import tempfile
-import shutil
 
 # --- Category models ---
 class CategoryRequest(BaseModel):
@@ -75,7 +71,7 @@ class PaymentResponse(BaseModel):
             source=p.source.value if isinstance(p.source, Enum) else str(p.source),
             type=p.type.value,
             note=p.note or "",
-            cust_category=p.cust_category,
+            cust_category=p.category,
         )
 
 

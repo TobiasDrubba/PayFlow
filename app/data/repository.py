@@ -41,7 +41,7 @@ def load_payments_from_csv(csv_path: str) -> List[Payment]:
                     currency=row["currency"],
                     merchant=row["merchant"],
                     auto_category=row.get("auto_category", "") or "",
-                    cust_category=row.get("cust_category", "") or "",
+                    category=row.get("cust_category", "") or "",
                     source=PaymentSource(row["source"]) if row.get("source") else PaymentSource.OTHER,
                     type=PaymentType(row["type"]) if row.get("type") else PaymentType.NONE,
                     note=row.get("note", "") or "",
@@ -73,7 +73,7 @@ def save_payments_to_csv(csv_path: str, payments: List[Payment]) -> None:
                     "source": p.source.value,
                     "type": p.type.value if hasattr(p, "type") else PaymentType.NONE.value,
                     "note": p.note,
-                    "cust_category": p.cust_category,
+                    "cust_category": p.category,
                 }
             )
 
