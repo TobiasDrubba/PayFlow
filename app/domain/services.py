@@ -18,6 +18,9 @@ import shutil
 from app.domain.models import PaymentSource
 from fastapi import UploadFile
 import os
+from fastapi.responses import StreamingResponse
+import io
+import csv
 
 class PaymentService:
     def __init__(self):
@@ -114,6 +117,38 @@ class PaymentService:
     def list_payments(self) -> List[Payment]:
         return self.payments
 
+    def get_payments_csv_stream(self):
+        """
+        Returns a StreamingResponse with all payments as a CSV file.
+        """
+        output = io.StringIO()
+        writer = csv.writer(output)
+        # Write header
+        writer.writerow([
+            "id", "date", "amount", "currency", "merchant",
+            "auto_category", "source", "type", "note", "cust_category"
+        ])
+        # Write rows
+        for p in self.payments:
+            writer.writerow([
+                p.id,
+                p.date.isoformat(),
+                p.amount,
+                p.currency,
+                p.merchant,
+                p.auto_category,
+                p.source.value if hasattr(p.source, "value") else str(p.source),
+                p.type.value if hasattr(p.type, "value") else str(p.type),
+                p.note or "",
+                p.cust_category or "",
+            ])
+        output.seek(0)
+        return StreamingResponse(
+            output,
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=payments.csv"}
+        )
+
 async def import_payment_files_service(files: list, types: list) -> dict:
     """
     Handles importing up to 3 payment files, each with its own type.
@@ -207,6 +242,9 @@ def aggregate_payments_sankey(payments: List[Payment], category_tree: dict, star
     result = sum_payments_by_category(payments, category_tree, start_date, end_date)
     sankey_data = build_sankey_data(result, category_tree)
     return sankey_data
+
+def get_payments_csv_stream():
+    return payment_service.get_payments_csv_stream()
 
 if __name__ == '__main__':
     # get file path from options

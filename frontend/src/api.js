@@ -82,3 +82,22 @@ export async function uploadPaymentFiles(filesWithTypes) {
   }
   return response.json();
 }
+
+export async function downloadAllPayments() {
+  const response = await fetch(`${API_URL}/payments/download`, {
+    method: "GET",
+    headers: {},
+  });
+  if (!response.ok) throw new Error("Failed to download payments");
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  // Set filename with current date (YYYY-MM-DD)
+  const dateStr = new Date().toISOString().slice(0, 10);
+  a.download = `payments_${dateStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}

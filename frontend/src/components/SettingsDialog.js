@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
+import { downloadAllPayments } from "../api";
 
 export default function SettingsDialog({
   open,
@@ -142,6 +143,25 @@ export default function SettingsDialog({
               className="settings-dialog-manage-btn"
             >
               Manage Categories
+            </Button>
+          </Box>
+          {/* Download All Payments Button */}
+          <Divider />
+          <Box>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={async () => {
+                try {
+                  await downloadAllPayments();
+                } catch (e) {
+                  alert("Failed to download payments.");
+                }
+              }}
+              className="settings-dialog-manage-btn"
+              sx={{ mt: 1 }}
+            >
+              Download All Payments
             </Button>
           </Box>
         </Stack>

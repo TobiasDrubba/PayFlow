@@ -7,8 +7,7 @@ from fastapi import FastAPI, HTTPException, Body, UploadFile, File, Form
 from pydantic import BaseModel, Field, RootModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-from app.domain.models import Payment, PaymentSource
+from app.domain.models import Payment
 from app.domain.services import list_payments
 # --- Add these imports ---
 from app.domain.services import (
@@ -20,10 +19,8 @@ from app.domain.services import (
     aggregate_payments_sankey,
     list_categories,
     get_sums_for_ranges_service,
-    import_alipay_payments,
-    import_wechat_payments,
-    import_tsinghua_card_payments,
     import_payment_files_service,
+    get_payments_csv_stream,  # <-- add this import
 )
 from app.utils.sum import sum_payments_in_range
 
@@ -192,3 +189,10 @@ async def import_payments_endpoint(
             content={"detail": f"Some files failed to import: {'; '.join(result['errors'])}", "imported": result["imported"]}
         )
     return {"imported": result["imported"]}
+
+@app.get("/payments/download")
+def download_all_payments():
+    """
+    Download all payments as a CSV file.
+    """
+    return get_payments_csv_stream()
