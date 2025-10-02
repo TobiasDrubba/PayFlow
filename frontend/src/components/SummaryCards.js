@@ -1,7 +1,6 @@
 import React from "react";
 import { Grid, Card, CardContent, Typography } from "@mui/material";
 import { format } from "date-fns";
-import "./SummaryCards.css"; // <-- import the CSS file
 
 // Format sum as negative, integer, add 元, and use K notation if >= 10000
 function formatSum(sum) {
@@ -94,7 +93,12 @@ export default function SummaryCards({
               p: 0.5,
               background: card.gradient,
               color: "white",
-              cursor: "pointer"
+              cursor: "pointer",
+              transition: "transform 0.18s cubic-bezier(.4,2,.6,1), box-shadow 0.18s cubic-bezier(.4,2,.6,1)",
+              "&:hover": {
+                transform: "scale(1.045)",
+                boxShadow: "0 6px 24px 0 rgba(0,0,0,0.12)",
+              }
             }}
             onClick={card.onClick}
           >
