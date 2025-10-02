@@ -58,8 +58,6 @@ export default function PaymentsTable() {
     onDragEnd
   } = useTableColumns();
 
-  const now = useMemo(() => new Date(), []);
-
   const [summarySums, setSummarySums] = useState({
     total: 0,
     month: 0,
@@ -95,8 +93,17 @@ export default function PaymentsTable() {
   const [aggregationError, setAggregationError] = useState("");
   const [aggregationTitle, setAggregationTitle] = useState("");
 
-  // Handler for summary card click
-  const handleSummaryCardClick = async ({ type, start, end }) => {
+  // Find newest payment date for summary cards reference
+  const newestPaymentDate = React.useMemo(() => {
+    if (!payments.length) return null;
+    return payments.reduce((latest, p) => {
+      const d = new Date(p.date);
+      return (!latest || d > latest) ? d : latest;
+    }, null);
+  }, [payments]);
+
+  // Handler for summary card aggregation
+  const handleSummaryCardAggregate = async ({ type, start, end }) => {
     let title = "";
     if (type === "total") {
       title = "Total Aggregation";
@@ -269,11 +276,11 @@ export default function PaymentsTable() {
         <SummaryCards
           totalSum={summarySums.total}
           customSum={summarySums.custom}
-          now={now}
           dateRange={dateRange}
-          onCardClick={handleSummaryCardClick}
+          onAggregate={handleSummaryCardAggregate}
           past7DaysSum={summarySums.past7}
           past30DaysSum={summarySums.past30}
+          newestPaymentDate={newestPaymentDate}
         />
 
         {/* Search Bar and Upload Button */}
