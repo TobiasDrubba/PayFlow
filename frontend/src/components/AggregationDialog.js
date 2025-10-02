@@ -36,7 +36,7 @@ export default function AggregationDialog({
   // Transform data for Nivo Sankey
   const sankeyData = React.useMemo(() => {
     if (!data || !data.nodes || !data.links) return null;
-
+    if (!data.nodes.length || !data.links.length) return "empty";
     return {
       nodes: data.nodes.map((n, i) => ({
         id: n.name,
@@ -75,7 +75,15 @@ export default function AggregationDialog({
 
         {error && <Typography color="error">{error}</Typography>}
 
-        {!loading && !error && sankeyData && (
+        {!loading && !error && sankeyData === "empty" && (
+          <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%" }}>
+            <Typography color="textSecondary" variant="h6">
+              No aggregation data to display.
+            </Typography>
+          </Box>
+        )}
+
+        {!loading && !error && sankeyData && sankeyData !== "empty" && (
           <Box sx={{ width: "100%", height: "100%" }}>
             <ResponsiveSankey
               data={sankeyData}

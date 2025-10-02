@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 
 from app.domain.models import Payment
 from app.utils.sum import get_signed_amount
@@ -50,28 +51,17 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
 
     # Filter payments by date if needed
     filtered_payments = []
+    # Convert start_date/end_date to date if provided
+    sd = start_date.date() if start_date else None
+    ed = end_date.date() if end_date else None
     for p in payments:
-        # Make p.date naive
-        p_date = p.date
-        if p_date.tzinfo is not None:
-            p_date = p_date.replace(tzinfo=None)
-
-        # Make start_date naive
-        sd = start_date
-        if sd and sd.tzinfo is not None:
-            sd = sd.replace(tzinfo=None)
-
-        # Make end_date naive
-        ed = end_date
-        if ed and ed.tzinfo is not None:
-            ed = ed.replace(tzinfo=None)
-
-        # Filtering
+        # Make p.date naive and get date only
+        p_date = p.date.date() if isinstance(p.date, datetime) else p.date
+        # Filtering (inclusive)
         if sd and p_date < sd:
             continue
         if ed and p_date > ed:
             continue
-
         filtered_payments.append(p)
 
     # Aggregate amounts

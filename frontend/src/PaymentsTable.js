@@ -145,7 +145,12 @@ export default function PaymentsTable() {
 
   React.useEffect(() => {
     if (!payments.length) return;
-    const nowDate = new Date();
+    // Use newest payment date as reference for summary cards (except total/custom)
+    const newest = payments.reduce((latest, p) => {
+      const d = new Date(p.date);
+      return (!latest || d > latest) ? d : latest;
+    }, null);
+
     const toNaiveISOString = (d) => d ? d.toISOString().slice(0, 19) : null;
 
     if (dateRange[0] && dateRange[1]) {
@@ -164,6 +169,8 @@ export default function PaymentsTable() {
       return;
     }
 
+    // Use newest payment date as "now" for relative ranges
+    const nowDate = newest;
     const ranges = {
       total: { start: null, end: null },
       past7: { start: toNaiveISOString(new Date(nowDate.getTime() - 6 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
