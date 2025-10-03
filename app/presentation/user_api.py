@@ -8,7 +8,7 @@ from app.data.repositories.user_repository import (
     create_user_table,
     get_user_by_username,
 )
-from app.domain.services.user_service import (
+from app.domain.services.auth_service import (
     authenticate_user,
     create_access_token,
     get_current_user,

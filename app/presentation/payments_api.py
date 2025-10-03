@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.data.repositories.payment_repository import SessionLocal
 from app.domain.models.payment import Payment
+from app.domain.services.auth_service import get_current_user
 from app.domain.services.payment_service import (
     aggregate_payments_by_category,
     aggregate_payments_sankey,
@@ -21,7 +22,6 @@ from app.domain.services.payment_service import (
     update_merchant_categories,
     update_payment_category,
 )
-from app.domain.services.user_service import get_current_user
 
 
 # --- Category models ---
