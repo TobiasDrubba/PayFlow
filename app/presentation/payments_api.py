@@ -79,7 +79,7 @@ class PaymentResponse(BaseModel):
         )
 
 
-router = APIRouter(prefix="/payments", tags=["payments"])
+router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 
 def get_db():

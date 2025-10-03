@@ -1,0 +1,55 @@
+services:
+
+  db:
+    image: postgres:15
+    container_name: payflow-postgres
+    env_file:
+      - .env.docker
+    ports:
+      - "5432:5432"
+    volumes:
+      - payflow_data:/var/lib/postgresql/data
+    networks:
+      - payflow-net
+
+  backend:
+    build: .
+    container_name: payflow-backend
+    env_file:
+      - .env.docker
+    depends_on:
+      - db
+    networks:
+      - payflow-net
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: payflow-frontend
+    depends_on:
+      - backend
+    networks:
+      - payflow-net
+
+  nginx:
+    image: nginx:alpine
+    container_name: payflow-nginx
+    depends_on:
+      - backend
+      - frontend
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "3000:80"
+    networks:
+      - payflow-net
+
+volumes:
+  payflow_data:
+    name: payflow_data
+
+networks:
+  payflow-net:
+    driver: bridge

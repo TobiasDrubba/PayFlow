@@ -13,6 +13,8 @@ RUN npm install
 # Copy the rest of the source code
 COPY . .
 
+COPY .env.docker .env
+
 # Build the React app for production
 RUN npm run build
 

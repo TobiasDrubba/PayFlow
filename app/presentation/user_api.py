@@ -15,7 +15,7 @@ from app.domain.services.auth_service import (
     get_password_hash,
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class UserCreateRequest(BaseModel):
