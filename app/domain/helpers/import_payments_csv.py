@@ -1,15 +1,13 @@
 import sys
-import os
 import csv
 from sqlalchemy.orm import Session, sessionmaker
 from datetime import datetime
 
 from app.data.base import engine
-from app.data.user_repository import create_user_table
-from app.data.payment_repository import upsert_payments
+from app.data.repositories.payment_repository import upsert_payments
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-from app.domain.models import Payment, PaymentSource, PaymentType
+from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 def parse_csv_payments(csv_path, user_id):
     payments = []

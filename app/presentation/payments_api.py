@@ -2,11 +2,11 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Optional, Dict, Any
 
-from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form, Request, Depends
+from fastapi import APIRouter, HTTPException, Body, UploadFile, File, Form, Depends
 from pydantic import BaseModel, Field, RootModel
-from app.domain.models import Payment
-from app.domain.payment_service import list_payments
-from app.domain.payment_service import (
+from app.domain.models.payment import Payment
+from app.domain.services.payment_service import list_payments
+from app.domain.services.payment_service import (
     update_payment_category,
     update_merchant_categories,
     get_category_tree,
@@ -19,8 +19,8 @@ from app.domain.payment_service import (
     get_payments_csv_stream,
 )
 from sqlalchemy.orm import Session
-from app.data.payment_repository import SessionLocal
-from app.domain.user_service import get_current_user
+from app.data.repositories.payment_repository import SessionLocal
+from app.domain.services.user_service import get_current_user
 
 # --- Category models ---
 class CategoryRequest(BaseModel):
@@ -209,7 +209,7 @@ def submit_payment(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    from app.domain.payment_service import submit_custom_payment
+    from app.domain.services.payment_service import submit_custom_payment
     try:
         payment = submit_custom_payment(
             date=req.date,
@@ -236,7 +236,7 @@ def delete_payments(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)
 ):
-    from app.domain.payment_service import delete_payments_by_ids
+    from app.domain.services.payment_service import delete_payments_by_ids
     try:
         deleted = delete_payments_by_ids(req.ids, db, current_user.id)
         return {"deleted": deleted}

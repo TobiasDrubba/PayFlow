@@ -1,7 +1,7 @@
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
-from app.domain.models import Payment, PaymentType
-from app.data.payment_repository import (
+from app.domain.models.payment import Payment, PaymentType, PaymentSource
+from app.data.repositories.payment_repository import (
     get_all_payments,
     upsert_payments,
     get_category_tree,
@@ -13,11 +13,10 @@ from app.data.payment_repository import (
     update_merchant_categories as repo_update_merchant_categories,
     delete_payments_by_ids as repo_delete_payments_by_ids,
 )
-from app.utils.aggregation import sum_payments_by_category, build_sankey_data
-from app.utils.sum import sum_payments_in_range
+from app.domain.helpers.aggregation import sum_payments_by_category, build_sankey_data
+from app.domain.helpers.sum import sum_payments_in_range
 import tempfile
 import shutil
-from app.domain.models import PaymentSource
 import os
 from fastapi.responses import StreamingResponse
 import io
@@ -63,7 +62,7 @@ def update_merchant_categories(payment_id: int, cust_category: str, db: Session,
     return count
 
 def import_alipay_payments(source_filepath: str, db: Session, user_id: int) -> int:
-    from app.utils.parser.alipay_parser import parse_alipay_file
+    from app.domain.parsers.alipay_parser import parse_alipay_file
     payments = parse_alipay_file(source_filepath)
     for p in payments:
         p.user_id = user_id
@@ -71,7 +70,7 @@ def import_alipay_payments(source_filepath: str, db: Session, user_id: int) -> i
     return added
 
 def import_wechat_payments(source_filepath: str, db: Session, user_id: int) -> int:
-    from app.utils.parser.wechat_parser import parse_wechat_file
+    from app.domain.parsers.wechat_parser import parse_wechat_file
     payments = parse_wechat_file(source_filepath)
     for p in payments:
         p.user_id = user_id
@@ -79,7 +78,7 @@ def import_wechat_payments(source_filepath: str, db: Session, user_id: int) -> i
     return added
 
 def import_tsinghua_card_payments(source_filepath: str, db: Session, user_id: int) -> int:
-    from app.utils.parser.tsinghua_card_parser import parse_tsinghua_card_file
+    from app.domain.parsers.tsinghua_card_parser import parse_tsinghua_card_file
     payments = parse_tsinghua_card_file(source_filepath)
     for p in payments:
         p.user_id = user_id

@@ -1,3 +1,4 @@
+python-jose
 fastapi
 pydantic
 python-dotenv

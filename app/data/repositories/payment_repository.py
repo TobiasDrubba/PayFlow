@@ -7,7 +7,7 @@ from typing import List
 from app.data.base import Base
 from app.data.base import engine
 
-from app.domain.models import Payment, PaymentSource, PaymentType
+from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

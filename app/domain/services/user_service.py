@@ -2,10 +2,9 @@ from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 from datetime import datetime, timedelta
-from app.domain.models import User
 import os
 
-from app.data.user_repository import SessionLocal, get_user_by_username
+from app.data.repositories.user_repository import SessionLocal, get_user_by_username
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 

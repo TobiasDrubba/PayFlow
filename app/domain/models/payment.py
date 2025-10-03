@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
-
 class PaymentSource(Enum):
     ALIPAY = "Alipay"
     WECHAT = "WeChat"
@@ -36,13 +35,6 @@ class Payment:
             raise ValueError("Payment amount cannot be zero.")
         if not self.currency:
             raise ValueError("Currency must be provided.")
-
-
-@dataclass
-class User:
-    id: int
-    username: str
-    hashed_password: str
 
 @dataclass
 class CategoryTree:

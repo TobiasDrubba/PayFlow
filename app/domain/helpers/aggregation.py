@@ -1,8 +1,8 @@
 from typing import List
 from datetime import datetime
 
-from app.domain.models import Payment
-from app.utils.sum import get_signed_amount
+from app.domain.models.payment import Payment
+from app.domain.helpers.sum import get_signed_amount
 
 
 def sum_payments_by_category(payments: List[Payment], category_tree: dict, start_date=None, end_date=None):

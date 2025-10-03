@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, date
-from app.domain.models import Payment, PaymentType
+from app.domain.models.payment import Payment, PaymentType
 
 def get_signed_amount(payment: Payment) -> float:
     """
