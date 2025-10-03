@@ -250,7 +250,7 @@ def submit_payment(
 
 
 class DeletePaymentsRequest(BaseModel):
-    ids: List[str]
+    ids: List[int]
 
 
 @router.post("/delete")
