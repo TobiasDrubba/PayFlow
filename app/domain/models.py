@@ -1,8 +1,7 @@
 # app/domain/models.py
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 
 
 class PaymentSource(Enum):
@@ -19,7 +18,6 @@ class PaymentType(Enum):
 
 @dataclass
 class Payment:
-    id: str
     date: datetime
     amount: float
     currency: str
@@ -29,7 +27,8 @@ class Payment:
     note: str = ""
     category: str = ""
     auto_category: str = "Uncategorized"
-    user_id: int = None  # New: associate payment with user
+    user_id: int = None
+    id: int = None
 
     def __post_init__(self):
         # Basic validation
@@ -37,6 +36,7 @@ class Payment:
             raise ValueError("Payment amount cannot be zero.")
         if not self.currency:
             raise ValueError("Currency must be provided.")
+
 
 @dataclass
 class User:

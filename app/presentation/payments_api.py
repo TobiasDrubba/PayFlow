@@ -43,7 +43,7 @@ class SumsRequest(RootModel):
     root: Dict[str, Dict[str, Optional[datetime]]] = Field(..., description="Mapping from name to {start, end}")
 
 class PaymentResponse(BaseModel):
-    id: str
+    id: int
     date: datetime
     amount: float
     currency: str
@@ -111,7 +111,7 @@ def update_categories_tree(
 
 @router.patch("/{payment_id}/category")
 def update_payment_cust_category(
-    payment_id: str,
+    payment_id: int,
     req: UpdateCategoryRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user)

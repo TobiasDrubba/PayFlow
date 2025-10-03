@@ -59,12 +59,10 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
             else:
                 raise ValueError("Transaction time is outside expected range.")
             payment = Payment(
-                id=str(row[TRANSACTION_ID_COL]).strip(),  # Ensure no trailing tabs/special chars
                 date=datetime.strptime(row[DATE_COL], "%Y-%m-%d %H:%M:%S"),
                 amount=amount,
                 currency="CNY",
                 merchant=row[MERCHANT_COL],
-                auto_category="Uncategorized",
                 source=PaymentSource.TSINGHUA_CARD,
                 type=p_type,
                 note= "Remaining Balance: " + row[DETAILS_COL] if row[DETAILS_COL] else "",

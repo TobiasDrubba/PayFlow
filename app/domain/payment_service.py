@@ -3,16 +3,18 @@ from sqlalchemy.orm import Session
 from app.domain.models import Payment, PaymentType
 from app.data.payment_repository import (
     get_all_payments,
-    save_payments,
     upsert_payments,
     get_category_tree,
     save_category_tree,
     get_all_child_categories,
     create_payment_tables,
+    add_payment,
+    update_payment_category as repo_update_payment_category,
+    update_merchant_categories as repo_update_merchant_categories,
+    delete_payments_by_ids as repo_delete_payments_by_ids,
 )
 from app.utils.aggregation import sum_payments_by_category, build_sankey_data
 from app.utils.sum import sum_payments_in_range
-from app.utils.alipay_parser import parse_alipay_file
 import tempfile
 import shutil
 from app.domain.models import PaymentSource
@@ -20,7 +22,6 @@ import os
 from fastapi.responses import StreamingResponse
 import io
 import csv
-import json
 
 create_payment_tables()
 
@@ -48,40 +49,21 @@ def update_category_tree(new_tree: Dict[str, Any], db: Session, user_id: int) ->
         save_payments(db, payments, user_id)
     save_category_tree(db, user_id, new_tree)
 
-def update_payment_category(payment_id: str, cust_category: str, db: Session, user_id: int) -> None:
+def update_payment_category(payment_id: int, cust_category: str, db: Session, user_id: int) -> None:
     _validate_category(db, user_id, cust_category)
-    payments = get_all_payments(db, user_id)
-    updated = False
-    for p in payments:
-        if p.id == payment_id:
-            p.category = cust_category
-            updated = True
-            break
-    if updated:
-        save_payments(db, payments, user_id)
-    else:
+    updated = repo_update_payment_category(db, payment_id, user_id, cust_category)
+    if not updated:
         raise ValueError(f"Payment with id {payment_id} not found")
 
-def update_merchant_categories(payment_id: str, cust_category: str, db: Session, user_id: int) -> int:
+def update_merchant_categories(payment_id: int, cust_category: str, db: Session, user_id: int) -> int:
     _validate_category(db, user_id, cust_category)
-    payments = get_all_payments(db, user_id)
-    merchant = None
-    for p in payments:
-        if p.id == payment_id:
-            merchant = p.merchant
-            break
-    if merchant is None:
+    count = repo_update_merchant_categories(db, payment_id, user_id, cust_category)
+    if count == 0:
         raise ValueError(f"Payment with id {payment_id} not found")
-    count = 0
-    for p in payments:
-        if p.merchant == merchant:
-            p.category = cust_category
-            count += 1
-    if count > 0:
-        save_payments(db, payments, user_id)
     return count
 
 def import_alipay_payments(source_filepath: str, db: Session, user_id: int) -> int:
+    from app.utils.parser.alipay_parser import parse_alipay_file
     payments = parse_alipay_file(source_filepath)
     for p in payments:
         p.user_id = user_id
@@ -89,7 +71,7 @@ def import_alipay_payments(source_filepath: str, db: Session, user_id: int) -> i
     return added
 
 def import_wechat_payments(source_filepath: str, db: Session, user_id: int) -> int:
-    from app.utils.wechat_parser import parse_wechat_file
+    from app.utils.parser.wechat_parser import parse_wechat_file
     payments = parse_wechat_file(source_filepath)
     for p in payments:
         p.user_id = user_id
@@ -97,7 +79,7 @@ def import_wechat_payments(source_filepath: str, db: Session, user_id: int) -> i
     return added
 
 def import_tsinghua_card_payments(source_filepath: str, db: Session, user_id: int) -> int:
-    from app.utils.tsinghua_card_parser import parse_tsinghua_card_file
+    from app.utils.parser.tsinghua_card_parser import parse_tsinghua_card_file
     payments = parse_tsinghua_card_file(source_filepath)
     for p in payments:
         p.user_id = user_id
@@ -149,16 +131,12 @@ def submit_custom_payment(date, amount, currency, merchant, payment_type, db: Se
         except Exception:
             raise ValueError("Invalid payment source")
 
-    import uuid
-    payment_id = str(uuid.uuid5(uuid.NAMESPACE_DNS,f"{date.isoformat()}|{amount}|{currency}|{merchant}|{payment_type}|{source}|{note}|{category}|{user_id}"))
-
     if category:
         valid_categories = set(child_categories(db, user_id))
         if category not in valid_categories:
             raise ValueError(f"Invalid child category: {category}")
 
     payment = Payment(
-        id=payment_id,
         date=date,
         amount=amount,
         currency=currency,
@@ -171,22 +149,11 @@ def submit_custom_payment(date, amount, currency, merchant, payment_type, db: Se
         user_id=user_id,
     )
 
-    payments = get_all_payments(db, user_id)
-    if any(p.id == payment_id for p in payments):
-        raise ValueError(f"Payment with id {payment_id} already exists")
-
-    payments.append(payment)
-    save_payments(db, payments, user_id)
-    return payment
+    # Use add_payment for efficient DB insert and duplicate check
+    return add_payment(db, payment, user_id)
 
 def delete_payments_by_ids(ids: list, db: Session, user_id: int) -> int:
-    payments = get_all_payments(db, user_id)
-    before = len(payments)
-    payments = [p for p in payments if p.id not in ids]
-    deleted = before - len(payments)
-    if deleted > 0:
-        save_payments(db, payments, user_id)
-    return deleted
+    return repo_delete_payments_by_ids(db, ids, user_id)
 
 async def import_payment_files_service(files: list, types: list, db: Session, user_id: int) -> dict:
     if not files or len(files) > 3:

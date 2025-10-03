@@ -1,5 +1,5 @@
 # app/data/repository.py
-from sqlalchemy import Column, Integer, String, Float, DateTime, Enum as SAEnum, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Enum as SAEnum, Text, ForeignKey, UUID
 from sqlalchemy.orm import sessionmaker
 
 import json
@@ -13,7 +13,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class PaymentORM(Base):
     __tablename__ = "payments"
-    id = Column(String, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     date = Column(DateTime, nullable=False)
     amount = Column(Float, nullable=False)
     currency = Column(String, nullable=False)
@@ -56,10 +56,14 @@ def get_all_payments(db, user_id: int) -> List[Payment]:
 def upsert_payments(db, payments: List[Payment], user_id: int) -> int:
     count = 0
     for p in payments:
-        exists = db.query(PaymentORM).filter_by(id=p.id, user_id=user_id).first()
+        exists = db.query(PaymentORM).filter_by(
+            date=p.date,
+            amount=p.amount,
+            merchant=p.merchant,
+            user_id=user_id
+        ).first()
         if not exists:
             db.add(PaymentORM(
-                id=p.id,
                 date=p.date,
                 amount=p.amount,
                 currency=p.currency,
@@ -75,24 +79,55 @@ def upsert_payments(db, payments: List[Payment], user_id: int) -> int:
     db.commit()
     return count
 
-def save_payments(db, payments: List[Payment], user_id: int):
-    # Overwrite all payments for user
-    db.query(PaymentORM).filter(PaymentORM.user_id == user_id).delete()
-    for p in payments:
-        db.add(PaymentORM(
-            id=p.id,
-            date=p.date,
-            amount=p.amount,
-            currency=p.currency,
-            merchant=p.merchant,
-            auto_category=p.auto_category,
-            source=p.source,
-            type=p.type,
-            note=p.note,
-            category=p.category,
-            user_id=user_id,
-        ))
+def add_payment(db, payment: Payment, user_id: int) -> Payment:
+    exists = db.query(PaymentORM).filter_by(
+        date=payment.date,
+        amount=payment.amount,
+        merchant=payment.merchant,
+        user_id=user_id
+    ).first()
+    if exists:
+        raise ValueError("Duplicate payment (same date, amount, merchant) already exists")
+    payment_orm = PaymentORM(
+        date=payment.date,
+        amount=payment.amount,
+        currency=payment.currency,
+        merchant=payment.merchant,
+        auto_category=payment.auto_category,
+        source=payment.source,
+        type=payment.type,
+        note=payment.note,
+        category=payment.category,
+        user_id=user_id,
+    )
+    db.add(payment_orm)
     db.commit()
+    db.refresh(payment_orm)
+    return payment_to_domain(payment_orm)
+
+def update_payment_category(db, payment_id: int, user_id: int, cust_category: str) -> bool:
+    payment = db.query(PaymentORM).filter_by(id=payment_id, user_id=user_id).first()
+    if not payment:
+        return False
+    payment.category = cust_category
+    db.commit()
+    return True
+
+def update_merchant_categories(db, payment_id: int, user_id: int, cust_category: str) -> int:
+    payment = db.query(PaymentORM).filter_by(id=payment_id, user_id=user_id).first()
+    if not payment:
+        return 0
+    merchant = payment.merchant
+    updated = db.query(PaymentORM).filter_by(merchant=merchant, user_id=user_id).update(
+        {"category": cust_category}
+    )
+    db.commit()
+    return updated
+
+def delete_payments_by_ids(db, ids: list, user_id: int) -> int:
+    deleted = db.query(PaymentORM).filter(PaymentORM.id.in_(ids), PaymentORM.user_id == user_id).delete(synchronize_session=False)
+    db.commit()
+    return deleted
 
 def get_category_tree(db, user_id: int) -> dict:
     tree = db.query(CategoryTreeORM).filter(CategoryTreeORM.user_id == user_id).first()

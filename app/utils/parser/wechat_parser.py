@@ -44,12 +44,10 @@ def parse_wechat_file(filepath: str) -> List[Payment]:
                 raise ValueError("Transaction type is not recognized.")
 
             payment = Payment(
-                id=str(row[TRANSACTION_ID_COL]).strip(),  # Ensure no trailing tabs/special chars
                 date=datetime.strptime(row[DATE_COL], "%Y-%m-%d %H:%M:%S"),
                 amount=amount,
                 currency="CNY",
                 merchant=row[MERCHANT_COL],
-                auto_category="Uncategorized",
                 source=PaymentSource.WECHAT,
                 type=p_type,
                 note=row[DETAILS_COL] if row[DETAILS_COL] else ""
