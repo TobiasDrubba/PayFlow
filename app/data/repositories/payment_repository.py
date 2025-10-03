@@ -1,15 +1,17 @@
 # app/data/repository.py
-from sqlalchemy import Column, Integer, String, Float, DateTime, Enum as SAEnum, Text, ForeignKey, UUID
-from sqlalchemy.orm import sessionmaker
-
 import json
 from typing import List
-from app.data.base import Base
-from app.data.base import engine
 
+from sqlalchemy import Column, DateTime
+from sqlalchemy import Enum as SAEnum
+from sqlalchemy import Float, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import sessionmaker
+
+from app.data.base import Base, engine
 from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 
 class PaymentORM(Base):
     __tablename__ = "payments"
@@ -25,14 +27,17 @@ class PaymentORM(Base):
     category = Column(String, default="")
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
+
 class CategoryTreeORM(Base):
     __tablename__ = "category_trees"
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, unique=True)
     tree_json = Column(Text, nullable=False)
 
+
 def create_payment_tables():
     Base.metadata.create_all(bind=engine)
+
 
 def payment_to_domain(payment_orm: PaymentORM) -> Payment:
     return Payment(
@@ -49,45 +54,57 @@ def payment_to_domain(payment_orm: PaymentORM) -> Payment:
         user_id=payment_orm.user_id,
     )
 
+
 def get_all_payments(db, user_id: int) -> List[Payment]:
     payments = db.query(PaymentORM).filter(PaymentORM.user_id == user_id).all()
     return [payment_to_domain(p) for p in payments]
 
+
 def upsert_payments(db, payments: List[Payment], user_id: int) -> int:
     count = 0
     for p in payments:
-        exists = db.query(PaymentORM).filter_by(
-            date=p.date,
-            amount=p.amount,
-            merchant=p.merchant,
-            user_id=user_id
-        ).first()
+        exists = (
+            db.query(PaymentORM)
+            .filter_by(
+                date=p.date, amount=p.amount, merchant=p.merchant, user_id=user_id
+            )
+            .first()
+        )
         if not exists:
-            db.add(PaymentORM(
-                date=p.date,
-                amount=p.amount,
-                currency=p.currency,
-                merchant=p.merchant,
-                auto_category=p.auto_category,
-                source=p.source,
-                type=p.type,
-                note=p.note,
-                category=p.category,
-                user_id=user_id,
-            ))
+            db.add(
+                PaymentORM(
+                    date=p.date,
+                    amount=p.amount,
+                    currency=p.currency,
+                    merchant=p.merchant,
+                    auto_category=p.auto_category,
+                    source=p.source,
+                    type=p.type,
+                    note=p.note,
+                    category=p.category,
+                    user_id=user_id,
+                )
+            )
             count += 1
     db.commit()
     return count
 
+
 def add_payment(db, payment: Payment, user_id: int) -> Payment:
-    exists = db.query(PaymentORM).filter_by(
-        date=payment.date,
-        amount=payment.amount,
-        merchant=payment.merchant,
-        user_id=user_id
-    ).first()
+    exists = (
+        db.query(PaymentORM)
+        .filter_by(
+            date=payment.date,
+            amount=payment.amount,
+            merchant=payment.merchant,
+            user_id=user_id,
+        )
+        .first()
+    )
     if exists:
-        raise ValueError("Duplicate payment (same date, amount, merchant) already exists")
+        raise ValueError(
+            "Duplicate payment (same date, amount, merchant) already exists"
+        )
     payment_orm = PaymentORM(
         date=payment.date,
         amount=payment.amount,
@@ -105,7 +122,10 @@ def add_payment(db, payment: Payment, user_id: int) -> Payment:
     db.refresh(payment_orm)
     return payment_to_domain(payment_orm)
 
-def update_payment_category(db, payment_id: int, user_id: int, cust_category: str) -> bool:
+
+def update_payment_category(
+    db, payment_id: int, user_id: int, cust_category: str
+) -> bool:
     payment = db.query(PaymentORM).filter_by(id=payment_id, user_id=user_id).first()
     if not payment:
         return False
@@ -113,27 +133,39 @@ def update_payment_category(db, payment_id: int, user_id: int, cust_category: st
     db.commit()
     return True
 
-def update_merchant_categories(db, payment_id: int, user_id: int, cust_category: str) -> int:
+
+def update_merchant_categories(
+    db, payment_id: int, user_id: int, cust_category: str
+) -> int:
     payment = db.query(PaymentORM).filter_by(id=payment_id, user_id=user_id).first()
     if not payment:
         return 0
     merchant = payment.merchant
-    updated = db.query(PaymentORM).filter_by(merchant=merchant, user_id=user_id).update(
-        {"category": cust_category}
+    updated = (
+        db.query(PaymentORM)
+        .filter_by(merchant=merchant, user_id=user_id)
+        .update({"category": cust_category})
     )
     db.commit()
     return updated
 
+
 def delete_payments_by_ids(db, ids: list, user_id: int) -> int:
-    deleted = db.query(PaymentORM).filter(PaymentORM.id.in_(ids), PaymentORM.user_id == user_id).delete(synchronize_session=False)
+    deleted = (
+        db.query(PaymentORM)
+        .filter(PaymentORM.id.in_(ids), PaymentORM.user_id == user_id)
+        .delete(synchronize_session=False)
+    )
     db.commit()
     return deleted
+
 
 def get_category_tree(db, user_id: int) -> dict:
     tree = db.query(CategoryTreeORM).filter(CategoryTreeORM.user_id == user_id).first()
     if tree:
         return json.loads(tree.tree_json)
     return {}
+
 
 def save_category_tree(db, user_id: int, tree: dict):
     tree_json = json.dumps(tree, ensure_ascii=False)
@@ -145,8 +177,10 @@ def save_category_tree(db, user_id: int, tree: dict):
         db.add(obj)
     db.commit()
 
+
 def get_all_child_categories(tree: dict) -> list:
     result = set()
+
     def collect(node):
         if isinstance(node, dict):
             for k, v in node.items():
@@ -160,5 +194,6 @@ def get_all_child_categories(tree: dict) -> list:
                     result.add(item)
                 else:
                     collect(item)
+
     collect(tree)
     return sorted(result)

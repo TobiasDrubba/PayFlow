@@ -1,8 +1,10 @@
 # app/data/wechat_parser.py
-import openpyxl
 from datetime import datetime
 from typing import List
-from app.domain.models import Payment, PaymentSource, PaymentType
+
+import openpyxl
+
+from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 # Define your column numbers here (0-based index)
 DATE_COL = 0
@@ -12,6 +14,7 @@ TRANSACTION_ID_COL = 8
 AMOUNT_COL = 5
 # not existing: CATEGORY_COL = 1
 TYP_COL = 4
+
 
 def parse_wechat_file(filepath: str) -> List[Payment]:
     """
@@ -26,7 +29,12 @@ def parse_wechat_file(filepath: str) -> List[Payment]:
     # Find the first row that looks like data
     data_start = 0
     for i, row in enumerate(rows):
-        if row and isinstance(row[DATE_COL], str) and row[DATE_COL][:4].isdigit() and "-" in row[DATE_COL]:
+        if (
+            row
+            and isinstance(row[DATE_COL], str)
+            and row[DATE_COL][:4].isdigit()
+            and "-" in row[DATE_COL]
+        ):
             data_start = i
             break
 
@@ -50,7 +58,7 @@ def parse_wechat_file(filepath: str) -> List[Payment]:
                 merchant=row[MERCHANT_COL],
                 source=PaymentSource.WECHAT,
                 type=p_type,
-                note=row[DETAILS_COL] if row[DETAILS_COL] else ""
+                note=row[DETAILS_COL] if row[DETAILS_COL] else "",
             )
             payments.append(payment)
         except Exception as e:
@@ -58,8 +66,10 @@ def parse_wechat_file(filepath: str) -> List[Payment]:
 
     return payments
 
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print("Usage: python -m app.data.wechat_parser <filepath>")
     else:

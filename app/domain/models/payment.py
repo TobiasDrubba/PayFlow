@@ -1,7 +1,8 @@
 # app/domain/models.py
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+
 
 class PaymentSource(Enum):
     ALIPAY = "Alipay"
@@ -9,11 +10,13 @@ class PaymentSource(Enum):
     TSINGHUA_CARD = "Tsinghua Card"
     OTHER = "Other"
 
+
 class PaymentType(Enum):
     INCOME = "income"
     EXPENSE = "expense"
     ABORT = "abort"
     REFUND = "refund"
+
 
 @dataclass
 class Payment:
@@ -26,8 +29,8 @@ class Payment:
     note: str = ""
     category: str = ""
     auto_category: str = "Uncategorized"
-    user_id: int = None
-    id: int = None
+    user_id: int | None = None
+    id: int | None = None
 
     def __post_init__(self):
         # Basic validation
@@ -35,6 +38,7 @@ class Payment:
             raise ValueError("Payment amount cannot be zero.")
         if not self.currency:
             raise ValueError("Currency must be provided.")
+
 
 @dataclass
 class CategoryTree:

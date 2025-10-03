@@ -2,16 +2,18 @@
 import csv
 from datetime import datetime
 from typing import List
-from app.domain.models import Payment, PaymentSource, PaymentType
+
+from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 # 🔧 Define your column numbers here (0-based index)
-DATE_COL = 0           # e.g., "2025-09-22 12:58:10"
-MERCHANT_COL = 2       # e.g., "Merchant Name"
-DETAILS_COL = 4        # (Optional) description column, could be used as note
+DATE_COL = 0  # e.g., "2025-09-22 12:58:10"
+MERCHANT_COL = 2  # e.g., "Merchant Name"
+DETAILS_COL = 4  # (Optional) description column, could be used as note
 TRANSACTION_ID_COL = 9  # example index for transaction ID
-AMOUNT_COL = 6         # e.g., "5.40"
-CATEGORY_COL = 1       # (Optional)
+AMOUNT_COL = 6  # e.g., "5.40"
+CATEGORY_COL = 1  # (Optional)
 TYP_COL = 5  # 收/支 (income/expense)
+
 
 def parse_alipay_file(filepath: str) -> List[Payment]:
     """
@@ -56,7 +58,7 @@ def parse_alipay_file(filepath: str) -> List[Payment]:
                 auto_category=cat,
                 source=PaymentSource.ALIPAY,
                 type=p_type,
-                note=row[DETAILS_COL] if len(row) > DETAILS_COL else ""
+                note=row[DETAILS_COL] if len(row) > DETAILS_COL else "",
             )
             payments.append(payment)
         except Exception as e:
@@ -67,6 +69,7 @@ def parse_alipay_file(filepath: str) -> List[Payment]:
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 2:
         print("Usage: python -m app.data.alipay_parser <filepath>")
     else:

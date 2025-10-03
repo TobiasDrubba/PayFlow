@@ -1,6 +1,8 @@
+from datetime import datetime
 from typing import List, Optional
-from datetime import datetime, date
+
 from app.domain.models.payment import Payment, PaymentType
+
 
 def get_signed_amount(payment: Payment) -> float:
     """
@@ -15,7 +17,10 @@ def get_signed_amount(payment: Payment) -> float:
         return payment.amount
     return 0.0
 
-def sum_payments_in_range(payments: List[Payment], start: Optional[datetime], end: Optional[datetime]) -> float:
+
+def sum_payments_in_range(
+    payments: List[Payment], start: Optional[datetime], end: Optional[datetime]
+) -> float:
     total = 0.0
     # Convert start/end to date if provided
     start_date = start.date() if start else None

@@ -1,17 +1,19 @@
-import sys
 import csv
-from sqlalchemy.orm import Session, sessionmaker
+import sys
 from datetime import datetime
+
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.data.base import engine
 from app.data.repositories.payment_repository import upsert_payments
+from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-from app.domain.models.payment import Payment, PaymentSource, PaymentType
+
 
 def parse_csv_payments(csv_path, user_id):
     payments = []
-    with open(csv_path, newline='', encoding='utf-8') as csvfile:
+    with open(csv_path, newline="", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
             try:
@@ -32,7 +34,8 @@ def parse_csv_payments(csv_path, user_id):
                 print(f"Skipping row due to error: {e}\nRow: {row}")
     return payments
 
-def import_payments_from_csv(csv_path, user_id):
+
+def import_payments_from_csv(csv_path: str, user_id: int):
     payments = parse_csv_payments(csv_path, user_id)
     db: Session = SessionLocal()
     try:
@@ -40,6 +43,7 @@ def import_payments_from_csv(csv_path, user_id):
         print(f"Imported {count} payments for user_id={user_id}")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

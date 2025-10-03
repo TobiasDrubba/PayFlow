@@ -1,8 +1,10 @@
 # app/data/tsinghua_card_parser.py
-import openpyxl
 from datetime import datetime
 from typing import List
-from app.domain.models import Payment, PaymentSource, PaymentType
+
+import openpyxl
+
+from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 # Define your column numbers here (0-based index)
 DATE_COL = 2
@@ -12,6 +14,7 @@ TRANSACTION_ID_COL = 2
 AMOUNT_COL = 1
 # not existing: CATEGORY_COL = 1
 TYP_COL = 3
+
 
 def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
     """
@@ -28,7 +31,12 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
     for i, row in enumerate(rows):
         if i < 3:  # Skip the first rows which are headers
             continue
-        if row and isinstance(row[DATE_COL], str) and row[DATE_COL][:4].isdigit() and "-" in row[DATE_COL]:
+        if (
+            row
+            and isinstance(row[DATE_COL], str)
+            and row[DATE_COL][:4].isdigit()
+            and "-" in row[DATE_COL]
+        ):
             data_start = i
             break
 
@@ -44,8 +52,7 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
                 p_type = PaymentType.EXPENSE
             else:
                 raise ValueError("Transaction type is not recognized.")
-            # Determine custom category based on the time of day.
-            # Three categories are defined: "Canteen Breakfast", "Canteen Lunch", "Canteen Dinner"
+            # Determine the category based on the time of day.
 
             hour = datetime.strptime(row[DATE_COL], "%Y-%m-%d %H:%M:%S").hour
             if p_type == PaymentType.INCOME:
@@ -65,8 +72,10 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
                 merchant=row[MERCHANT_COL],
                 source=PaymentSource.TSINGHUA_CARD,
                 type=p_type,
-                note= "Remaining Balance: " + row[DETAILS_COL] if row[DETAILS_COL] else "",
-                category= cust_category
+                note="Remaining Balance: " + row[DETAILS_COL]
+                if row[DETAILS_COL]
+                else "",
+                category=cust_category,
             )
             payments.append(payment)
         except Exception as e:
@@ -74,14 +83,16 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
 
     return payments
 
+
 if __name__ == "__main__":
     import sys
 
     def plot_payment_times(payments):
         import matplotlib.pyplot as plt
+
         times = [p.date.hour + p.date.minute / 60.0 for p in payments]
         plt.figure(figsize=(10, 2))
-        plt.scatter(times, [1]*len(times), alpha=0.6)
+        plt.scatter(times, [1] * len(times), alpha=0.6)
         plt.yticks([])
         plt.xlabel("Time of Day (Hour)")
         plt.title("Distribution of Payment Times")
@@ -93,7 +104,7 @@ if __name__ == "__main__":
         print("Usage: python -m app.data.tsinghua_card_parser <filepath> [-p]")
     else:
         filepath = sys.argv[1]
-        show_plot = '-p' in sys.argv
+        show_plot = "-p" in sys.argv
         payments = parse_tsinghua_card_file(filepath)
         for p in payments:
             print(p)

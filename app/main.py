@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from app.presentation.payments_api import router as payments_router
 from app.presentation.user_api import router as auth_router
 
@@ -20,4 +21,3 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(payments_router)
-

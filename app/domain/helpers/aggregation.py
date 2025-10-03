@@ -1,15 +1,17 @@
-from typing import List
 from datetime import datetime
+from typing import List
 
-from app.domain.models.payment import Payment
 from app.domain.helpers.sum import get_signed_amount
+from app.domain.models.payment import Payment
 
 
-def sum_payments_by_category(payments: List[Payment], category_tree: dict, start_date=None, end_date=None):
+def sum_payments_by_category(
+    payments: List[Payment], category_tree: dict, start_date=None, end_date=None
+):
     """
     Aggregate payment amounts by all categories and parent categories.
     Returns: dict {category_name: sum, "metadata": {...}}
-    Adds 'no category' and 'invalid category' keys for uncategorized and unknown payments.
+    Adds 'no category' and 'invalid category' keys.
     Metadata includes total sum and invalid categories list.
     """
 
@@ -20,7 +22,7 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
             paths = []
         if path is None:
             path = []
-        for k, v in (tree.items() if isinstance(tree, dict) else []):
+        for k, v in tree.items() if isinstance(tree, dict) else []:
             current_path = path + [k]
             if v is None:
                 paths.append(current_path)
@@ -89,24 +91,23 @@ def sum_payments_by_category(payments: List[Payment], category_tree: dict, start
     for key in result:
         result[key] = round(result[key])
 
-    result = {k: -v for k, v in result.items() if v != 0.0}
-
-    result["metadata"] = {
+    output = {k: -v for k, v in result.items() if v != 0.0}
+    metadata = {
         "total sum": total_sum,
-        "invalid categories": sorted(list(invalid_categories_set))
+        "invalid categories": sorted(list(invalid_categories_set)),
     }
 
-    return result
+    return output, metadata
 
 
-def build_sankey_data(result: dict, category_tree: dict):
+def build_sankey_data(result: dict, metadata: dict, category_tree: dict):
     """
     Build Sankey diagram nodes and links from aggregation result and category tree.
     Exclude nodes with value 0 and links to/from such nodes.
     If a node has a negative value, create a link from child to parent.
     """
     nodes = []
-    node_map = {}
+    node_map: dict = {}  # Add type annotation
     idx = 0
 
     def add_node(name):
@@ -114,8 +115,8 @@ def build_sankey_data(result: dict, category_tree: dict):
         if name in node_map:
             return node_map[name]
         value = 0
-        if name == "Total Sum" and "metadata" in result and "total sum" in result["metadata"]:
-            value = result["metadata"]["total sum"]
+        if name == "Total Sum":
+            value = metadata["total sum"]
         elif name in result:
             value = result[name]
         nodes.append({"name": name, "value": value})
@@ -126,60 +127,69 @@ def build_sankey_data(result: dict, category_tree: dict):
     add_node("Total Sum")
 
     links = []
+
     def traverse(tree, parent):
         if tree is None:
             return
-        for k, v in (tree.items() if isinstance(tree, dict) else []):
+        for k, v in tree.items() if isinstance(tree, dict) else []:
             add_node(k)
             value = result.get(k, 0)
             if value > 0:
-                links.append({
-                    "source": node_map[parent],
-                    "target": node_map[k],
-                    "value": value
-                })
+                links.append(
+                    {"source": node_map[parent], "target": node_map[k], "value": value}
+                )
             elif value < 0:
-                links.append({
-                    "source": node_map[k],
-                    "target": node_map[parent],
-                    "value": abs(value)
-                })
+                links.append(
+                    {
+                        "source": node_map[k],
+                        "target": node_map[parent],
+                        "value": abs(value),
+                    }
+                )
             if isinstance(v, dict):
                 traverse(v, k)
 
-    for top_cat in (category_tree or {}):
+    for top_cat in category_tree or {}:
         add_node(top_cat)
         value = result.get(top_cat, 0)
         if value > 0:
-            links.append({
-                "source": node_map["Total Sum"],
-                "target": node_map[top_cat],
-                "value": value
-            })
+            links.append(
+                {
+                    "source": node_map["Total Sum"],
+                    "target": node_map[top_cat],
+                    "value": value,
+                }
+            )
         elif value < 0:
-            links.append({
-                "source": node_map[top_cat],
-                "target": node_map["Total Sum"],
-                "value": abs(value)
-            })
+            links.append(
+                {
+                    "source": node_map[top_cat],
+                    "target": node_map["Total Sum"],
+                    "value": abs(value),
+                }
+            )
         traverse(category_tree[top_cat], top_cat)
 
     for special in ["no category", "invalid category"]:
         val = result.get(special, 0)
         if val > 0:
             add_node(special)
-            links.append({
-                "source": node_map["Total Sum"],
-                "target": node_map[special],
-                "value": val
-            })
+            links.append(
+                {
+                    "source": node_map["Total Sum"],
+                    "target": node_map[special],
+                    "value": val,
+                }
+            )
         elif val < 0:
             add_node(special)
-            links.append({
-                "source": node_map[special],
-                "target": node_map["Total Sum"],
-                "value": abs(val)
-            })
+            links.append(
+                {
+                    "source": node_map[special],
+                    "target": node_map["Total Sum"],
+                    "value": abs(val),
+                }
+            )
 
     # Filter out nodes with value 0
     filtered_nodes = [n for n in nodes if n["value"] != 0]
@@ -189,20 +199,22 @@ def build_sankey_data(result: dict, category_tree: dict):
 
     # Filter links to only those whose source and target are in valid_names
     filtered_links = []
-    for l in links:
+    for link in links:
         src_name = None
         tgt_name = None
         # Find names by old idx
         for name, old_idx in node_map.items():
-            if old_idx == l["source"]:
+            if old_idx == link["source"]:
                 src_name = name
-            if old_idx == l["target"]:
+            if old_idx == link["target"]:
                 tgt_name = name
         if src_name in valid_names and tgt_name in valid_names:
-            filtered_links.append({
-                "source": name_to_new_idx[src_name],
-                "target": name_to_new_idx[tgt_name],
-                "value": l["value"]
-            })
+            filtered_links.append(
+                {
+                    "source": name_to_new_idx[src_name],
+                    "target": name_to_new_idx[tgt_name],
+                    "value": link["value"],
+                }
+            )
 
     return {"nodes": filtered_nodes, "links": filtered_links}
