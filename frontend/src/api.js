@@ -1,4 +1,6 @@
-const API_URL = process.env.REACT_APP_API_URL;
+const API_URL =
+  (window._env_ && window._env_.REACT_APP_API_URL) ||
+  process.env.REACT_APP_API_URL;
 if (!API_URL) {
   throw new Error("REACT_APP_API_URL environment variable is not set");
 }

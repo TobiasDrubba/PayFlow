@@ -4,7 +4,7 @@ services:
     image: postgres:15
     container_name: payflow-postgres
     env_file:
-      - .env.docker
+      - .env
     volumes:
       - payflow_data:/var/lib/postgresql/data
     networks:
@@ -13,7 +13,7 @@ services:
   backend:
     container_name: payflow-backend
     env_file:
-      - .env.docker
+      - .env
     depends_on:
       - db
     networks:

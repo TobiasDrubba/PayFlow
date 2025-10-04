@@ -27,6 +27,8 @@ services:
       - backend
     networks:
       - payflow-net
+    env_file:
+      - frontend/.env.docker
 
   nginx:
     image: nginx:alpine

@@ -13,8 +13,6 @@ RUN npm install
 # Copy the rest of the source code
 COPY . .
 
-COPY .env.docker .env
-
 # Build the React app for production
 RUN npm run build
 
@@ -24,8 +22,13 @@ FROM nginx:alpine
 # Copy built frontend from previous stage
 COPY --from=build /app/build /usr/share/nginx/html
 
+# Add entrypoint script for injecting env variables
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Expose port 80
 EXPOSE 80
 
-# Nginx runs automatically when the container starts
+# Use entrypoint script to start nginx after injecting env
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
