@@ -1,5 +1,8 @@
-# WeAliPaymentOverview
-Creates a simple transaction overview from combined sources, WeChat and Alipay
+# PayFlow
+Creates a simple transaction overview from combined sources, WeChat, Alipay, Tsinghua Student Card.
+
+# Setup
+Copy the .env*_template files and rename them to .env*. Fill in the values.
 
 # Run
 `docker compose up`
