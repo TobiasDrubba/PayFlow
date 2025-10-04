@@ -11,7 +11,8 @@ import {
   IconButton,
 } from "@mui/material";
 import { ResponsiveSankey } from "@nivo/sankey";
-import { Fullscreen, FullscreenExit } from "@mui/icons-material";
+import { Fullscreen, FullscreenExit, SwapHoriz } from "@mui/icons-material";
+import ReactECharts from "echarts-for-react";
 
 // Color palette for nodes
 const COLORS = [
@@ -53,6 +54,65 @@ export default function AggregationDialog({
   const formatValue = React.useCallback((v) => new Intl.NumberFormat().format(v), []);
   const [fullScreen, setFullScreen] = React.useState(false);
 
+  // Toggle between Sankey and ECharts view
+  const [view, setView] = React.useState("sankey");
+  const handleToggleView = () => setView((v) => (v === "sankey" ? "echarts" : "sankey"));
+
+  // Transform data for ECharts (sunburst/tree)
+  const echartsData = React.useMemo(() => {
+    if (!data || !data.nodes || !data.links) return null;
+    if (!data.nodes.length || !data.links.length) return null;
+
+    // Build a map for quick lookup
+    const nodeMap = {};
+    data.nodes.forEach((n, i) => {
+      nodeMap[i] = { name: n.name, value: n.value, children: [] };
+    });
+
+    // Build parent-child relationships
+    data.links.forEach((l) => {
+      if (nodeMap[l.source] && nodeMap[l.target]) {
+        nodeMap[l.source].children.push(nodeMap[l.target]);
+      }
+    });
+
+    // Find the root node ("Total Sum")
+    const rootIdx = data.nodes.findIndex((n) => n.name === "Total Sum");
+    if (rootIdx === -1) return null;
+    nodeMap[rootIdx].value *= -1;
+
+    // Deep copy to avoid mutation
+    function deepCopy(node) {
+      return {
+        name: node.name,
+        value: node.value,
+        ...(node.children.length > 0
+          ? { children: node.children.map(deepCopy) }
+          : {}),
+      };
+    }
+
+    return [deepCopy(nodeMap[rootIdx])];
+  }, [data]);
+
+  // ECharts option
+  const echartsOption = React.useMemo(() => {
+    if (!echartsData) return {};
+    console.log(echartsData);
+    return {
+      // tooltip: { trigger: "item", formatter: "{b}: {c}" },
+      series: [
+        {
+          type: "sunburst",
+          data: echartsData,
+          radius: [0, "90%"],
+          label: { rotate: "radial" },
+          emphasis: { focus: 'ancestor' }
+        },
+      ],
+    };
+  }, [echartsData]);
+
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="xl" fullScreen={fullScreen}>
       <DialogTitle sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
@@ -83,7 +143,7 @@ export default function AggregationDialog({
           </Box>
         )}
 
-        {!loading && !error && sankeyData && sankeyData !== "empty" && (
+        {!loading && !error && sankeyData && sankeyData !== "empty" && view === "sankey" && (
           <Box sx={{ width: "100%", height: "100%" }}>
             <ResponsiveSankey
               data={sankeyData}
@@ -111,9 +171,28 @@ export default function AggregationDialog({
             />
           </Box>
         )}
+
+        {!loading && !error && echartsData && view === "echarts" && (
+          <Box sx={{ width: "100%", height: "100%" }}>
+            <ReactECharts
+              option={echartsOption}
+              style={{ height: "100%", width: "100%" }}
+              notMerge={true}
+              lazyUpdate={true}
+            />
+          </Box>
+        )}
       </DialogContent>
 
       <DialogActions>
+        <Button
+          onClick={handleToggleView}
+          variant="outlined"
+          color="secondary"
+          startIcon={<SwapHoriz />}
+        >
+          Toggle View
+        </Button>
         <Button onClick={onClose} variant="contained" color="primary">
           Close
         </Button>
