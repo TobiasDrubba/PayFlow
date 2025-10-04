@@ -284,3 +284,31 @@ def aggregate_payments_sankey(
     )
     sankey_data = build_sankey_data(result, metadata, category_tree)
     return sankey_data
+
+
+def add_payments_list(
+    payments_data: List[dict], db: Session, user_id: int
+) -> List[Payment]:
+    """
+    Add a list of payments to the database.
+    Returns the list of added Payment domain objects.
+    """
+    added_payments = []
+    for data in payments_data:
+        payment_type_enum = PaymentType(data["type"])
+        payment_source = PaymentSource(data.get("source", PaymentSource.OTHER.value))
+        payment = Payment(
+            date=data["date"],
+            amount=data["amount"],
+            currency=data["currency"],
+            merchant=data["merchant"],
+            auto_category=data.get("auto_category", ""),
+            category=data.get("category", ""),
+            source=payment_source,
+            type=payment_type_enum,
+            note=data.get("note", ""),
+            user_id=user_id,
+        )
+        added = add_payment(db, payment, user_id)
+        added_payments.append(added)
+    return added_payments

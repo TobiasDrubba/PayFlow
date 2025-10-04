@@ -266,3 +266,26 @@ def delete_payments(
         return {"deleted": deleted}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class BatchPaymentRequest(BaseModel):
+    payments: List[SubmitPaymentRequest]
+
+
+@router.post("/batch", response_model=List[PaymentResponse])
+def submit_payments_batch(
+    req: BatchPaymentRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    from app.domain.services.payment_service import add_payments_list
+
+    payments_data = [p.model_dump() for p in req.payments]
+    # Convert datetime fields if needed
+    for p in payments_data:
+        if isinstance(p["date"], str):
+            from dateutil.parser import parse
+
+            p["date"] = parse(p["date"])
+    added_payments = add_payments_list(payments_data, db, current_user.id)
+    return [PaymentResponse.from_domain(p) for p in added_payments]

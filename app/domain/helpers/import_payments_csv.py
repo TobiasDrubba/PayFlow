@@ -1,5 +1,4 @@
 import csv
-import sys
 from datetime import datetime
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -35,20 +34,64 @@ def parse_csv_payments(csv_path, user_id):
     return payments
 
 
-def import_payments_from_csv(csv_path: str, user_id: int):
+def import_payments_from_csv(
+    csv_path: str, user_id: int, api_url: str | None = None, token: str | None = None
+):
     payments = parse_csv_payments(csv_path, user_id)
-    db: Session = SessionLocal()
-    try:
-        count = upsert_payments(db, payments, user_id)
-        print(f"Imported {count} payments for user_id={user_id}")
-    finally:
-        db.close()
+    if api_url:
+        import requests
+
+        # Prepare payload for API
+        payload = {
+            "payments": [
+                {
+                    "date": p.date.isoformat(),
+                    "amount": p.amount,
+                    "currency": p.currency,
+                    "merchant": p.merchant,
+                    "type": p.type.value,
+                    "source": p.source.value,
+                    "note": p.note,
+                    "category": p.category,
+                }
+                for p in payments
+            ]
+        }
+        headers = {}
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        try:
+            resp = requests.post(api_url, json=payload, headers=headers)
+            resp.raise_for_status()
+            print(
+                f"Sent {len(payments)} payments to API {api_url}."
+                f" Response: {resp.status_code}"
+            )
+        except Exception as e:
+            print(f"Failed to send payments to API: {e}")
+    else:
+        db: Session = SessionLocal()
+        try:
+            count = upsert_payments(db, payments, user_id)
+            print(f"Imported {count} payments for user_id={user_id}")
+        finally:
+            db.close()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python -m app.utils.import_payments_csv <csv_path> <user_id>")
-        sys.exit(1)
-    csv_path = sys.argv[1]
-    user_id = int(sys.argv[2])
-    import_payments_from_csv(csv_path, user_id)
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Import payments from CSV.")
+    parser.add_argument("csv_path", help="Path to CSV file")
+    parser.add_argument("user_id", type=int, help="User ID")
+    parser.add_argument(
+        "--api-url", help="API endpoint to POST payments batch (optional)", default=None
+    )
+    parser.add_argument(
+        "--token", help="Bearer token for API authentication (optional)", default=None
+    )
+    args = parser.parse_args()
+
+    import_payments_from_csv(
+        args.csv_path, args.user_id, api_url=args.api_url, token=args.token
+    )
