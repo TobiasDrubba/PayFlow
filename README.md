@@ -9,11 +9,12 @@ cp frontend/.env.example frontend/.env
 cp frontend/.env.example frontend/.env.docker
 ```
 
-# Run for development with Docker
+# Development
+##  Run for development with Docker
 ```
 docker compose up
 ```
-# Run for development
+## Run for development
 Start DB first.
 ```
 docker compose -f docker-compose.yml -f docker-compose.override.yml up -d db
@@ -28,7 +29,15 @@ cd frontend
 npm start
 ```
 
-# Run for production
+# Production
+## Build for production (optional)
+```
+docker build -t tobiasdrubba/payflow-backend:latest .
+docker build -t tobiasdrubba/payflow-frontend:latest ./frontend/
+docker push tobiasdrubba/payflow-backend:latest
+docker push tobiasdrubba/payflow-frontend:latest
+```
+## Run for production with Docker
 ```
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --pull always
 ```
