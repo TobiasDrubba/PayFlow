@@ -58,42 +58,59 @@ export default function AggregationDialog({
   const [view, setView] = React.useState("sankey");
   const handleToggleView = () => setView((v) => (v === "sankey" ? "echarts" : "sankey"));
 
-  // Transform data for ECharts (sunburst/tree)
-  const echartsData = React.useMemo(() => {
-    if (!data || !data.nodes || !data.links) return null;
-    if (!data.nodes.length || !data.links.length) return null;
 
-    // Build a map for quick lookup
-    const nodeMap = {};
-    data.nodes.forEach((n, i) => {
-      nodeMap[i] = { name: n.name, value: n.value, children: [] };
-    });
+    // Transform data for ECharts (sunburst/tree)
+    const echartsData = React.useMemo(() => {
+      if (!data || !data.nodes || !data.links) return null;
+      if (!data.nodes.length || !data.links.length) return null;
 
-    // Build parent-child relationships
-    data.links.forEach((l) => {
-      if (nodeMap[l.source] && nodeMap[l.target]) {
-        nodeMap[l.source].children.push(nodeMap[l.target]);
+      // Find the root node ("Total Sum")
+      const rootIdx = data.nodes.findIndex((n) => n.name === "Total Sum");
+      if (rootIdx === -1) return null;
+
+      // Filter out nodes with negative values (except root)
+      const filteredNodes = data.nodes
+        .map((n, i) => ({ ...n, idx: i }))
+        .filter((n, i) => i === rootIdx || n.value >= 0);
+
+      // Build a map for quick lookup
+      const nodeMap = {};
+      filteredNodes.forEach((n) => {
+        nodeMap[n.idx] = { name: n.name, value: n.value, children: [] };
+      });
+
+      // Build parent-child relationships, only for filtered nodes
+      data.links.forEach((l) => {
+        if (nodeMap[l.source] && nodeMap[l.target]) {
+          nodeMap[l.source].children.push(nodeMap[l.target]);
+        }
+      });
+
+      console.log(data.nodes);
+      // Sum up the absolute values of all ignored (negative) nodes (except root)
+      const negativeSum = data.nodes
+        .map((n, i) => {
+          // Check if node is not root, has negative value, and is a child (has an incoming link)
+          const isChild = data.links.some((l) => l.target === i);
+          return i !== rootIdx && n.value < 0 && isChild ? n.value : 0;
+        })
+        .reduce((acc, v) => acc + v, 0);
+      // Negate and add to the root node's value
+      nodeMap[rootIdx].value = -nodeMap[rootIdx].value + -negativeSum;
+
+      // Deep copy to avoid mutation
+      function deepCopy(node) {
+        return {
+          name: node.name,
+          value: node.value,
+          ...(node.children.length > 0
+            ? { children: node.children.map(deepCopy) }
+            : {}),
+        };
       }
-    });
 
-    // Find the root node ("Total Sum")
-    const rootIdx = data.nodes.findIndex((n) => n.name === "Total Sum");
-    if (rootIdx === -1) return null;
-    nodeMap[rootIdx].value *= -1;
-
-    // Deep copy to avoid mutation
-    function deepCopy(node) {
-      return {
-        name: node.name,
-        value: node.value,
-        ...(node.children.length > 0
-          ? { children: node.children.map(deepCopy) }
-          : {}),
-      };
-    }
-
-    return [deepCopy(nodeMap[rootIdx])];
-  }, [data]);
+      return [deepCopy(nodeMap[rootIdx])];
+    }, [data]);
 
   // ECharts option
   const echartsOption = React.useMemo(() => {
