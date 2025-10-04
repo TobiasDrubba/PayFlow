@@ -2,3 +2,10 @@ services:
   db:
     ports:
       - "5432:5432"
+
+  backend:
+    build: .
+
+  frontend:
+    build:
+      context: ./frontend

@@ -11,6 +11,7 @@ services:
       - payflow-net
 
   backend:
+    image: tobiasdrubba/payflow-backend:latest
     container_name: payflow-backend
     env_file:
       - .env.docker
@@ -20,6 +21,7 @@ services:
       - payflow-net
 
   frontend:
+    image: tobiasdrubba/payflow-frontend:latest
     container_name: payflow-frontend
     depends_on:
       - backend
