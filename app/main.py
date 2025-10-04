@@ -6,11 +6,7 @@ from app.presentation.user_api import router as auth_router
 
 app = FastAPI(title="Payment API", version="1.0.0")
 
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "*",
-]
+origins = ["http://localhost:3005", "http://127.0.0.1:3005"]
 
 app.add_middleware(
     CORSMiddleware,

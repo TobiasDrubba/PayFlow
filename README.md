@@ -4,8 +4,11 @@ Creates a simple transaction overview from combined sources, WeChat, Alipay, Tsi
 # Setup
 Copy the .env*_template files and rename them to .env*. Fill in the values.
 
-# Run
+# Run for development
 `docker compose up`
+
+# Run for production
+`docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d`
 
 # Database
 To only run the DB:
