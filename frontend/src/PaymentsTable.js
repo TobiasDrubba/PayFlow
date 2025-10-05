@@ -88,6 +88,11 @@ export default function PaymentsTable() {
     );
   }, [payments, search]);
 
+  // Sort filtered payments by date descending
+  const sortedPayments = useMemo(() => {
+    return [...filteredPayments].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [filteredPayments]);
+
   const handleCategoryChangeWithDialog = (payment, value) => {
     handleCategoryChange(payment, value, payments, setPayments);
   };
@@ -438,7 +443,7 @@ export default function PaymentsTable() {
                   </Droppable>
                 </TableHead>
                 <TableBody>
-                  {filteredPayments.map((payment) => (
+                  {sortedPayments.map((payment) => (
                     <PaymentTableRow
                       key={payment.id}
                       payment={payment}
@@ -451,11 +456,11 @@ export default function PaymentsTable() {
                       onRowContextMenu={handleRowContextMenu}
                     />
                   ))}
-                  {filteredPayments.length === 0 && (
+                  {sortedPayments.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={visibleColumns.size || 1} className="empty-state">
                         <div className="empty-state-icon">📭</div>
-                        <div className="empty-state-text">No results found. Try adjusting your filters.</div>
+                        <div className="empty-state-text">No results found. Try adjusting your filters or upload some data.</div>
                       </TableCell>
                     </TableRow>
                   )}
