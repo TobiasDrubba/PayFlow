@@ -11,6 +11,7 @@ from app.data.repositories.user_repository import (
 from app.domain.services.auth_service import (
     authenticate_user,
     create_access_token,
+    delete_user_account,
     get_current_user,
     get_password_hash,
 )
@@ -53,6 +54,16 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
 @router.get("/me")
 def read_users_me(current_user=Depends(get_current_user)):
     return {"username": current_user.username}
+
+
+@router.delete("/delete")
+def delete_current_user(current_user=Depends(get_current_user)):
+    db = SessionLocal()
+    success = delete_user_account(db, current_user.id)
+    db.close()
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"deleted": True}
 
 
 # Ensure user table exists at startup

@@ -207,3 +207,13 @@ def get_all_child_categories(tree: dict) -> list:
 
     collect(tree)
     return sorted(result)
+
+
+def delete_all_user_data(db, user_id: int):
+    db.query(PaymentORM).filter(PaymentORM.user_id == user_id).delete(
+        synchronize_session=False
+    )
+    db.query(CategoryTreeORM).filter(CategoryTreeORM.user_id == user_id).delete(
+        synchronize_session=False
+    )
+    db.commit()

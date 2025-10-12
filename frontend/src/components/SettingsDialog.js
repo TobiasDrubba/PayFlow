@@ -15,8 +15,9 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
-import { downloadAllPayments } from "../api";
+import { downloadAllPayments, deleteUserAccount } from "../api";
 import AddCustomPaymentDialog from "./AddCustomPaymentDialog";
+import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
 
 export default function SettingsDialog({
   open,
@@ -32,6 +33,8 @@ export default function SettingsDialog({
 }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const openMenu = Boolean(anchorEl);
 
   const handleOpenMenu = (e) => setAnchorEl(e.currentTarget);
@@ -41,6 +44,21 @@ export default function SettingsDialog({
   const handleLogout = () => {
     localStorage.removeItem("token");
     window.location.reload();
+  };
+
+  // Delete account handler
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    try {
+      await deleteUserAccount();
+      localStorage.removeItem("token");
+      window.location.reload();
+    } catch (e) {
+      alert("Failed to delete account.");
+    } finally {
+      setDeleteLoading(false);
+      setDeleteDialogOpen(false);
+    }
   };
 
   return (
@@ -202,6 +220,20 @@ export default function SettingsDialog({
                 Logout
               </Button>
             </Box>
+            <Divider />
+            {/* Delete Account Button */}
+            <Box>
+              <Button
+                variant="outlined"
+                color="error"
+                fullWidth
+                onClick={() => setDeleteDialogOpen(true)}
+                className="delete-account-btn"
+                sx={{ mt: 1 }}
+              >
+                Delete Account
+              </Button>
+            </Box>
           </Stack>
         </DialogContent>
       </Dialog>
@@ -210,6 +242,16 @@ export default function SettingsDialog({
         onClose={() => setAddPaymentOpen(false)}
         categories={categories}
         onSubmitted={refetchPayments}
+      />
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        onConfirm={handleDeleteAccount}
+        title="Delete Account"
+        description="Are you sure you want to delete your account? All your data will be permanently removed. This action cannot be undone."
+        confirmText="Delete Account"
+        cancelText="Cancel"
+        loading={deleteLoading}
       />
     </>
   );

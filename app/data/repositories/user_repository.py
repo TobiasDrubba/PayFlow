@@ -31,3 +31,12 @@ def create_user(db, username: str, hashed_password: str):
 
 def get_user(db, user_id: int):
     return db.query(UserORM).filter(UserORM.id == user_id).first()
+
+
+def delete_user(db, user_id: int):
+    user = db.query(UserORM).filter(UserORM.id == user_id).first()
+    if user:
+        db.delete(user)
+        db.commit()
+        return True
+    return False

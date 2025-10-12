@@ -7,7 +7,12 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 
-from app.data.repositories.user_repository import SessionLocal, get_user_by_username
+from app.data.repositories.payment_repository import delete_all_user_data
+from app.data.repositories.user_repository import (
+    SessionLocal,
+    delete_user,
+    get_user_by_username,
+)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 SECRET_KEY = os.getenv("SECRET_KEY")
@@ -63,3 +68,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
     if user is None:
         raise credentials_exception
     return user
+
+
+def delete_user_account(db: Session, user_id: int):
+    delete_all_user_data(db, user_id)
+    return delete_user(db, user_id)

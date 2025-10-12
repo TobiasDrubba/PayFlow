@@ -566,3 +566,16 @@ select:focus-visible {
 .logout-btn:hover {
   background: #d9363e !important;
 }
+
+.delete-account-btn {
+  background: linear-gradient(135deg, #ea6666 0%, #a24b4b 100%) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  height: 48px !important;
+  font-weight: 600 !important;
+  text-transform: none !important;
+}
+
+.delete-account-btn:hover {
+  background: #d9363e !important;
+}

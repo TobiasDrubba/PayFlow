@@ -177,3 +177,11 @@ export async function registerUser(username, password) {
   }
   return response.json();
 }
+
+export async function deleteUserAccount() {
+  const response = await fetchWithAuth(
+    `${API_URL}/auth/delete`,
+    { method: "DELETE" }
+  );
+  return response.json();
+}
