@@ -185,3 +185,19 @@ export async function deleteUserAccount() {
   );
   return response.json();
 }
+
+export async function changeUsername(newUsername) {
+  const response = await fetchWithAuth(
+    `${API_URL}/auth/change-username`,
+    { method: "POST", body: { new_username: newUsername } }
+  );
+  return response.json();
+}
+
+export async function changePassword(newPassword) {
+  const response = await fetchWithAuth(
+    `${API_URL}/auth/change-password`,
+    { method: "POST", body: { new_password: newPassword } }
+  );
+  return response.json();
+}

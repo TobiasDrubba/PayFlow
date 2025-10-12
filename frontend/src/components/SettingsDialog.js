@@ -18,6 +18,8 @@ import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
 import { downloadAllPayments, deleteUserAccount } from "../api";
 import AddCustomPaymentDialog from "./AddCustomPaymentDialog";
 import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import ChangeUsernameDialog from "./ChangeUsernameDialog";
+import ChangePasswordDialog from "./ChangePasswordDialog";
 
 export default function SettingsDialog({
   open,
@@ -35,6 +37,8 @@ export default function SettingsDialog({
   const [addPaymentOpen, setAddPaymentOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [changeUsernameOpen, setChangeUsernameOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const openMenu = Boolean(anchorEl);
 
   const handleOpenMenu = (e) => setAnchorEl(e.currentTarget);
@@ -80,6 +84,10 @@ export default function SettingsDialog({
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Stack spacing={3}>
+            {/* View Section */}
+            <Box>
+              <span style={{ fontWeight: 600, fontSize: "1.1rem" }}>View</span>
+            </Box>
             <Box>
               <DateRangePicker
                 value={dateRange}
@@ -121,7 +129,6 @@ export default function SettingsDialog({
                 }}
               />
             </Box>
-            <Divider />
             <Box>
               <Button
                 variant="contained"
@@ -161,6 +168,11 @@ export default function SettingsDialog({
               </Menu>
             </Box>
             <Divider />
+
+            {/* Data Section */}
+            <Box>
+              <span style={{ fontWeight: 600, fontSize: "1.1rem" }}>Data</span>
+            </Box>
             <Box>
               <Button
                 variant="contained"
@@ -174,7 +186,6 @@ export default function SettingsDialog({
                 Manage Categories
               </Button>
             </Box>
-            <Divider />
             <Box>
               <Button
                 variant="contained"
@@ -187,8 +198,6 @@ export default function SettingsDialog({
                 Add Custom Payment
               </Button>
             </Box>
-            {/* Download All Payments Button */}
-            <Divider />
             <Box>
               <Button
                 variant="contained"
@@ -206,8 +215,34 @@ export default function SettingsDialog({
                 Download All Payments
               </Button>
             </Box>
-            {/* Logout Button */}
             <Divider />
+
+            {/* Account Section */}
+            <Box>
+              <span style={{ fontWeight: 600, fontSize: "1.1rem" }}>Account</span>
+            </Box>
+            <Box>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={() => setChangeUsernameOpen(true)}
+                className="settings-dialog-manage-btn"
+                sx={{ mt: 1 }}
+              >
+                Change Username
+              </Button>
+            </Box>
+            <Box>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={() => setChangePasswordOpen(true)}
+                className="settings-dialog-manage-btn"
+                sx={{ mt: 1 }}
+              >
+                Change Password
+              </Button>
+            </Box>
             <Box>
               <Button
                 variant="outlined"
@@ -220,8 +255,6 @@ export default function SettingsDialog({
                 Logout
               </Button>
             </Box>
-            <Divider />
-            {/* Delete Account Button */}
             <Box>
               <Button
                 variant="outlined"
@@ -252,6 +285,14 @@ export default function SettingsDialog({
         confirmText="Delete Account"
         cancelText="Cancel"
         loading={deleteLoading}
+      />
+      <ChangeUsernameDialog
+        open={changeUsernameOpen}
+        onClose={() => setChangeUsernameOpen(false)}
+      />
+      <ChangePasswordDialog
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
       />
     </>
   );

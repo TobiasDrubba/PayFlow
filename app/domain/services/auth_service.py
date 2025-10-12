@@ -10,8 +10,11 @@ from sqlalchemy.orm import Session
 from app.data.repositories.payment_repository import delete_all_user_data
 from app.data.repositories.user_repository import (
     SessionLocal,
+    create_user,
     delete_user,
     get_user_by_username,
+    update_password,
+    update_username,
 )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -73,3 +76,25 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
 def delete_user_account(db: Session, user_id: int):
     delete_all_user_data(db, user_id)
     return delete_user(db, user_id)
+
+
+def change_username(db: Session, user_id: int, new_username: str):
+    if get_user_by_username(db, new_username):
+        raise ValueError("Username already taken")
+    return update_username(db, user_id, new_username)
+
+
+def change_password(db: Session, user_id: int, new_password: str):
+    if len(new_password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    hashed = get_password_hash(new_password)
+    return update_password(db, user_id, hashed)
+
+
+def register_user(db: Session, username: str, password: str):
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if get_user_by_username(db, username):
+        raise ValueError("Username already registered")
+    hashed_password = get_password_hash(password)
+    return create_user(db, username, hashed_password)

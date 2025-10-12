@@ -40,3 +40,23 @@ def delete_user(db, user_id: int):
         db.commit()
         return True
     return False
+
+
+def update_username(db, user_id: int, new_username: str):
+    user = db.query(UserORM).filter(UserORM.id == user_id).first()
+    if user:
+        user.username = new_username
+        db.commit()
+        db.refresh(user)
+        return user
+    return None
+
+
+def update_password(db, user_id: int, new_hashed_password: str):
+    user = db.query(UserORM).filter(UserORM.id == user_id).first()
+    if user:
+        user.hashed_password = new_hashed_password
+        db.commit()
+        db.refresh(user)
+        return user
+    return None

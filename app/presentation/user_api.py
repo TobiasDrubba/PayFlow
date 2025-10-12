@@ -2,18 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 
-from app.data.repositories.user_repository import (
-    SessionLocal,
-    create_user,
-    create_user_table,
-    get_user_by_username,
-)
+from app.data.repositories.user_repository import SessionLocal, create_user_table
 from app.domain.services.auth_service import (
     authenticate_user,
+    change_password,
+    change_username,
     create_access_token,
     delete_user_account,
     get_current_user,
-    get_password_hash,
+    register_user,
 )
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
@@ -24,14 +21,22 @@ class UserCreateRequest(BaseModel):
     password: str
 
 
+class ChangeUsernameRequest(BaseModel):
+    new_username: str
+
+
+class ChangePasswordRequest(BaseModel):
+    new_password: str
+
+
 @router.post("/register")
-def register_user(req: UserCreateRequest):
+def register_user_endpoint(req: UserCreateRequest):
     db = SessionLocal()
-    if get_user_by_username(db, req.username):
+    try:
+        user = register_user(db, req.username, req.password)
+    except ValueError as e:
         db.close()
-        raise HTTPException(status_code=400, detail="Username already registered")
-    hashed_password = get_password_hash(req.password)
-    user = create_user(db, req.username, hashed_password)
+        raise HTTPException(status_code=400, detail=str(e))
     db.close()
     return {"username": user.username}
 
@@ -64,6 +69,34 @@ def delete_current_user(current_user=Depends(get_current_user)):
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return {"deleted": True}
+
+
+@router.post("/change-username")
+def change_username_endpoint(
+    req: ChangeUsernameRequest, current_user=Depends(get_current_user)
+):
+    db = SessionLocal()
+    try:
+        user = change_username(db, current_user.id, req.new_username)
+    except ValueError as e:
+        db.close()
+        raise HTTPException(status_code=400, detail=str(e))
+    db.close()
+    return {"username": user.username}
+
+
+@router.post("/change-password")
+def change_password_endpoint(
+    req: ChangePasswordRequest, current_user=Depends(get_current_user)
+):
+    db = SessionLocal()
+    try:
+        change_password(db, current_user.id, req.new_password)
+    except ValueError as e:
+        db.close()
+        raise HTTPException(status_code=400, detail=str(e))
+    db.close()
+    return {"success": True}
 
 
 # Ensure user table exists at startup
