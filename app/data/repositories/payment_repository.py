@@ -164,7 +164,17 @@ def get_category_tree(db, user_id: int) -> dict:
     tree = db.query(CategoryTreeORM).filter(CategoryTreeORM.user_id == user_id).first()
     if tree:
         return json.loads(tree.tree_json)
-    return {}
+    return {
+        "Food": {
+            "Restaurant": None,
+            "Canteen": {
+                "Canteen Breakfast": None,
+                "Canteen Lunch": None,
+                "Canteen Dinner": None,
+                "Card Recharge": None,
+            },
+        }
+    }
 
 
 def save_category_tree(db, user_id: int, tree: dict):
