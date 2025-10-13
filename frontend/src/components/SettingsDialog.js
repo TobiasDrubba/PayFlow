@@ -75,13 +75,21 @@ export default function SettingsDialog({
     return stored && currencyOptions.includes(stored) ? stored : "CNY";
   });
 
+  // Track previous currency to detect changes
+  const [prevCurrency, setPrevCurrency] = useState(currency);
+
   useEffect(() => {
     if (currency === "CNY") {
       localStorage.removeItem("currency");
     } else {
       localStorage.setItem("currency", currency);
     }
-  }, [currency]);
+    // Only refetch if currency actually changed
+    if (currency !== prevCurrency) {
+      refetchPayments?.();
+      setPrevCurrency(currency);
+    }
+  }, [currency, prevCurrency, refetchPayments]);
 
   return (
     <>

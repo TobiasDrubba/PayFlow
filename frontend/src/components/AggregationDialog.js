@@ -62,7 +62,17 @@ export default function AggregationDialog({
     };
   }, [data]);
 
-  const formatValue = React.useCallback((v) => new Intl.NumberFormat().format(v), []);
+  // Get currency from localStorage, default to CNY
+  const currency = (typeof window !== "undefined" && localStorage.getItem("currency")) || "CNY";
+  let currencySymbol = "元";
+  if (currency === "USD") currencySymbol = "$";
+  else if (currency === "EUR") currencySymbol = "€";
+
+  const formatValue = React.useCallback(
+    (v) => `${new Intl.NumberFormat().format(v)} ${currencySymbol}`,
+    [currencySymbol]
+  );
+
   const [fullScreen, setFullScreen] = React.useState(false);
 
   // Toggle between Sankey and ECharts view
@@ -153,7 +163,7 @@ export default function AggregationDialog({
         textStyle: { color: "#fff", fontWeight: 500 },
         extraCssText: "box-shadow: 0 2px 12px rgba(0,0,0,0.4);",
         formatter: (info) =>
-          `<b>${info.name}</b><br/>${formatValue(info.value)} 元`,
+          `<b>${info.name}</b><br/>${formatValue(info.value)}`,
       },
       series: [
         {
