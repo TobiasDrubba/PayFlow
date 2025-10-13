@@ -92,9 +92,11 @@ def get_db():
 
 @router.get("", response_model=List[PaymentResponse])
 def get_all_payments_endpoint(
-    db: Session = Depends(get_db), current_user=Depends(get_current_user)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    currency: Optional[str] = None,
 ) -> List[PaymentResponse]:
-    payments = list_payments(db, current_user.id)
+    payments = list_payments(db, current_user.id, currency)
     return [PaymentResponse.from_domain(p) for p in payments]
 
 
@@ -147,8 +149,9 @@ def aggregate_payments_endpoint(
     req: AggregateRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    currency: Optional[str] = None,
 ):
-    payments = list_payments(db, current_user.id)
+    payments = list_payments(db, current_user.id, currency)
     category_tree = get_category_tree(db, current_user.id)
     result = aggregate_payments_by_category(
         payments, category_tree, start_date=req.start_date, end_date=req.end_date
@@ -166,8 +169,9 @@ def aggregate_payments_sankey_endpoint(
     req: SankeyAggregateRequest,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    currency: Optional[str] = None,
 ):
-    payments = list_payments(db, current_user.id)
+    payments = list_payments(db, current_user.id, currency)
     category_tree = get_category_tree(db, current_user.id)
     result = aggregate_payments_sankey(
         payments, category_tree, start_date=req.start_date, end_date=req.end_date
@@ -180,8 +184,9 @@ def get_sums_for_ranges(
     req: SumsRequest = Body(...),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    currency: Optional[str] = None,
 ):
-    return get_sums_for_ranges_service(req.root, db, current_user.id)
+    return get_sums_for_ranges_service(req.root, db, current_user.id, currency)
 
 
 @router.post("/import")
@@ -207,9 +212,11 @@ async def import_payments_endpoint(
 
 @router.get("/download")
 def download_all_payments(
-    db: Session = Depends(get_db), current_user=Depends(get_current_user)
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    currency: Optional[str] = None,
 ):
-    return get_payments_csv_stream(db, current_user.id)
+    return get_payments_csv_stream(db, current_user.id, currency)
 
 
 class SubmitPaymentRequest(BaseModel):
@@ -289,3 +296,22 @@ def submit_payments_batch(
             p["date"] = parse(p["date"])
     added_payments = add_payments_list(payments_data, db, current_user.id)
     return [PaymentResponse.from_domain(p) for p in added_payments]
+
+
+class ExchangeRateRequest(BaseModel):
+    start: datetime
+    end: datetime
+
+
+@router.post("/exchange-rates/fetch")
+def fetch_exchange_rates_endpoint(
+    req: ExchangeRateRequest,
+    db: Session = Depends(get_db),
+):
+    from app.domain.services.payment_service import fetch_and_store_exchange_rates
+
+    try:
+        fetch_and_store_exchange_rates(db, req.start, req.end)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

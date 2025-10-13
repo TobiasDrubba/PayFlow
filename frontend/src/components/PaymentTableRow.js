@@ -47,6 +47,9 @@ export default function PaymentTableRow({
   const isPos = isPositive(t);
   const isNeg = !isAbortType && !isPos;
 
+  // Get currency from localStorage, default to CNY
+  const displayCurrency = (typeof window !== "undefined" && localStorage.getItem("currency")) || "CNY";
+
   const renderCell = (col) => {
     switch (col.id) {
       case "date":
@@ -79,6 +82,10 @@ export default function PaymentTableRow({
         );
 
       case "amount":
+        // Show symbol according to selected currency
+        let symbol = "元";
+        if (displayCurrency === "USD") symbol = "$";
+        else if (displayCurrency === "EUR") symbol = "€";
         return (
           <TableCell
             key={`${payment.id}-amount`}
@@ -93,17 +100,18 @@ export default function PaymentTableRow({
             }}
           >
             {isAbortType ? "—" : isPos ? "+" : "-"}
-            {isAbortType ? "" : Math.abs(payment.amount).toFixed(2)}
+            {isAbortType ? "" : `${Math.abs(payment.amount).toFixed(2)} ${symbol}`}
           </TableCell>
         );
 
       case "currency":
+        // Always show the selected currency, not the original payment currency
         return (
           <TableCell key={`${payment.id}-currency`}>
             <Chip
               size="small"
-              label={payment.currency}
-              color={currencyColor(payment.currency)}
+              label={displayCurrency}
+              color={currencyColor(displayCurrency)}
               variant="outlined"
               sx={{ borderRadius: 1.5, fontWeight: 700 }}
             />

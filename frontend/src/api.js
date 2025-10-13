@@ -53,8 +53,20 @@ async function fetchWithAuth(url, { method = "GET", headers = {}, body, isForm =
   return response;
 }
 
+function getCurrencyParam() {
+  const currency = localStorage.getItem("currency");
+  if (currency === "EUR" || currency === "USD") {
+    return currency;
+  }
+  return null;
+}
+
 export async function fetchPayments() {
-  const response = await fetchWithAuth(`${API_URL}/payments`);
+  const currency = getCurrencyParam();
+  const url = currency
+    ? `${API_URL}/payments?currency=${currency}`
+    : `${API_URL}/payments`;
+  const response = await fetchWithAuth(url);
   return response.json();
 }
 
@@ -88,21 +100,23 @@ export async function updateCategoryTree(tree) {
 }
 
 export async function fetchAggregation({ start_date, end_date } = {}) {
+  const currency = getCurrencyParam();
   const body = {};
   if (start_date) body.start_date = start_date;
   if (end_date) body.end_date = end_date;
-  const response = await fetchWithAuth(
-    `${API_URL}/payments/aggregate/sankey`,
-    { method: "POST", body }
-  );
+  const url = currency
+    ? `${API_URL}/payments/aggregate/sankey?currency=${currency}`
+    : `${API_URL}/payments/aggregate/sankey`;
+  const response = await fetchWithAuth(url, { method: "POST", body });
   return response.json();
 }
 
 export async function fetchSumsForRanges(ranges) {
-  const response = await fetchWithAuth(
-    `${API_URL}/payments/sums`,
-    { method: "POST", body: ranges }
-  );
+  const currency = getCurrencyParam();
+  const url = currency
+    ? `${API_URL}/payments/sums?currency=${currency}`
+    : `${API_URL}/payments/sums`;
+  const response = await fetchWithAuth(url, { method: "POST", body: ranges });
   return response.json();
 }
 
@@ -120,17 +134,21 @@ export async function uploadPaymentFiles(filesWithTypes) {
 }
 
 export async function downloadAllPayments() {
-  const response = await fetchWithAuth(`${API_URL}/payments/download`);
+  const currency = getCurrencyParam();
+  const url = currency
+    ? `${API_URL}/payments/download?currency=${currency}`
+    : `${API_URL}/payments/download`;
+  const response = await fetchWithAuth(url);
   const blob = await response.blob();
-  const url = window.URL.createObjectURL(blob);
+  const urlBlob = window.URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
+  a.href = urlBlob;
   const dateStr = new Date().toISOString().slice(0, 10);
   a.download = `payments_${dateStr}.csv`;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  window.URL.revokeObjectURL(url);
+  window.URL.revokeObjectURL(urlBlob);
 }
 
 export async function submitCustomPayment(payment) {

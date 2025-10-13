@@ -3,11 +3,19 @@ import io
 import os
 import shutil
 import tempfile
+from datetime import datetime
 from typing import Any, Dict, List
 
+import requests
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
+from app.data.repositories.currency_repository import (
+    get_currency_rates,
+    has_currency_data_for_range,
+    set_currency_rates,
+    upsert_rates_from_api,
+)
 from app.data.repositories.payment_repository import add_payment, create_payment_tables
 from app.data.repositories.payment_repository import (
     delete_payments_by_ids as repo_delete_payments_by_ids,
@@ -76,44 +84,57 @@ def update_merchant_categories(
     return count
 
 
-def import_alipay_payments(source_filepath: str, db: Session, user_id: int) -> int:
-    from app.domain.parsers.alipay_parser import parse_alipay_file
+def fetch_and_store_exchange_rates(
+    db: Session, start_date: datetime, end_date: datetime
+):
+    """
+    Fetches and stores exchange rates for the given date range if not already present.
+    """
+    if not has_currency_data_for_range(db, start_date, end_date):
+        start_str = start_date.strftime("%Y-%m-%d")
+        end_str = end_date.strftime("%Y-%m-%d")
+        url = (
+            f"https://api.frankfurter.dev/v1/{start_str}..{end_str}"
+            f"?base=CNY&symbols=EUR,USD"
+        )
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            exchange_data = response.json()
+            upsert_rates_from_api(db, exchange_data)
+        except requests.RequestException as e:
+            print(f"Exchange rate API error: {e}")
+        except Exception as e:
+            print(f"Unexpected error fetching exchange rates: {e}")
 
-    payments = parse_alipay_file(source_filepath)
-    for p in payments:
-        p.user_id = user_id
-    added = upsert_payments(db, payments, user_id)
-    return added
 
-
-def import_wechat_payments(source_filepath: str, db: Session, user_id: int) -> int:
-    from app.domain.parsers.wechat_parser import parse_wechat_file
-
-    payments = parse_wechat_file(source_filepath)
-    for p in payments:
-        p.user_id = user_id
-    added = upsert_payments(db, payments, user_id)
-    return added
-
-
-def import_tsinghua_card_payments(
-    source_filepath: str, db: Session, user_id: int
+def _import_payments_with_parser(
+    parser_func, source_filepath: str, db: Session, user_id: int
 ) -> int:
-    from app.domain.parsers.tsinghua_card_parser import parse_tsinghua_card_file
-
-    payments = parse_tsinghua_card_file(source_filepath)
+    payments = parser_func(source_filepath)
     for p in payments:
         p.user_id = user_id
-    added = upsert_payments(db, payments, user_id)
-    return added
+
+    # Determine earliest and latest payment dates
+    dates = [p.date for p in payments if hasattr(p, "date") and p.date]
+    if dates:
+        earliest = min(dates)
+        latest = max(dates)
+        fetch_and_store_exchange_rates(db, earliest, latest)
+    else:
+        raise ValueError("No valid payment dates found in the imported data.")
+
+    return upsert_payments(db, payments, user_id)
 
 
-def list_payments(db: Session, user_id: int) -> List[Payment]:
-    return get_all_payments(db, user_id)
+def list_payments(
+    db: Session, user_id: int, currency: str | None = None
+) -> List[Payment]:
+    return get_all_payments(db, user_id, currency)
 
 
-def get_payments_csv_stream(db: Session, user_id: int):
-    payments = get_all_payments(db, user_id)
+def get_payments_csv_stream(db: Session, user_id: int, currency: str | None = None):
+    payments = get_all_payments(db, user_id, currency)
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(
@@ -183,6 +204,46 @@ def submit_custom_payment(
         if category not in valid_categories:
             raise ValueError(f"Invalid child category: {category}")
 
+    # Convert to CNY if currency is EUR or USD
+    if currency in ("EUR", "USD"):
+        rate_obj = get_currency_rates(db, date)
+        euro_rate = rate_obj.EURO if rate_obj else None
+        usd_rate = rate_obj.USD if rate_obj else None
+
+        # Fetch from API if missing
+        if (currency == "EUR" and euro_rate is None) or (
+            currency == "USD" and usd_rate is None
+        ):
+            api_url = (
+                f"https://api.frankfurter.dev/v1/{date.strftime('%Y-%m-%d')}"
+                f"?base=CNY&symbols=EUR,USD"
+            )
+            try:
+                response = requests.get(api_url)
+                response.raise_for_status()
+                data = response.json()
+                euro_rate = data["rates"].get("EUR")
+                usd_rate = data["rates"].get("USD")
+                if euro_rate is None or usd_rate is None:
+                    raise ValueError("Exchange rate not found in API response")
+                set_currency_rates(db, date, euro_rate, usd_rate)
+            except Exception as e:
+                raise ValueError(f"Failed to fetch exchange rate: {e}")
+
+        # Calculate amount in CNY by dividing through the rate
+        if currency == "EUR":
+            rate = euro_rate
+            if not euro_rate:
+                raise ValueError("EUR exchange rate not available")
+        elif currency == "USD":
+            rate = usd_rate
+            if not usd_rate:
+                raise ValueError("USD exchange rate not available")
+        else:
+            raise ValueError("Unsupported currency")
+        amount = amount / rate
+        currency = "CNY"
+
     payment = Payment(
         date=date,
         amount=amount,
@@ -212,22 +273,23 @@ async def import_payment_files_service(
     if not types or len(types) != len(files):
         return {"imported": 0, "errors": ["A type must be specified for each file."]}
 
-    import_funcs = {
-        PaymentSource.ALIPAY.value: lambda path: import_alipay_payments(
-            path, db, user_id
-        ),
-        PaymentSource.WECHAT.value: lambda path: import_wechat_payments(
-            path, db, user_id
-        ),
-        PaymentSource.TSINGHUA_CARD.value: lambda path: import_tsinghua_card_payments(
-            path, db, user_id
-        ),
+    parser_funcs = {
+        PaymentSource.ALIPAY.value: lambda: __import__(
+            "app.domain.parsers.alipay_parser", fromlist=["parse_alipay_file"]
+        ).parse_alipay_file,
+        PaymentSource.WECHAT.value: lambda: __import__(
+            "app.domain.parsers.wechat_parser", fromlist=["parse_wechat_file"]
+        ).parse_wechat_file,
+        PaymentSource.TSINGHUA_CARD.value: lambda: __import__(
+            "app.domain.parsers.tsinghua_card_parser",
+            fromlist=["parse_tsinghua_card_file"],
+        ).parse_tsinghua_card_file,
     }
 
     imported = 0
     errors = []
     for file, type in zip(files, types):
-        if type not in import_funcs:
+        if type not in parser_funcs:
             errors.append(
                 f"{getattr(file, 'filename', str(file))}: Unsupported payment type."
             )
@@ -242,7 +304,8 @@ async def import_payment_files_service(
             with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
                 shutil.copyfileobj(file.file, tmp)
                 tmp_path = tmp.name
-            imported += import_funcs[type](tmp_path)
+            parser_func = parser_funcs[type]()
+            imported += _import_payments_with_parser(parser_func, tmp_path, db, user_id)
         except Exception as e:
             errors.append(f"{getattr(file, 'filename', str(file))}: {str(e)}")
         finally:
@@ -255,9 +318,12 @@ async def import_payment_files_service(
 
 
 def get_sums_for_ranges_service(
-    ranges: Dict[str, Dict[str, Any]], db: Session, user_id: int
+    ranges: Dict[str, Dict[str, Any]],
+    db: Session,
+    user_id: int,
+    currency: str | None = None,
 ) -> Dict[str, float]:
-    payments = get_all_payments(db, user_id)
+    payments = get_all_payments(db, user_id, currency)
     result = {}
     for name, range_dict in ranges.items():
         start = range_dict.get("start")

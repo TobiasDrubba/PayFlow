@@ -2,14 +2,17 @@ import React from "react";
 import { Grid, Card, CardContent, Typography } from "@mui/material";
 import { format } from "date-fns";
 
-// Format sum as negative, integer, add 元, and use K notation if >= 10000
-function formatSum(sum) {
+// Format sum as negative, integer, add currency symbol, and use K notation if >= 10000
+function formatSum(sum, currency) {
   const abs = Math.abs(Math.round(sum));
   let display;
+  let symbol = "元";
+  if (currency === "USD") symbol = "$";
+  else if (currency === "EUR") symbol = "€";
   if (abs >= 10000) {
-    display = `${(abs / 1000).toFixed(1)}K 元`;
+    display = `${(abs / 1000).toFixed(1)}K ${symbol}`;
   } else {
-    display = `${abs} 元`;
+    display = `${abs} ${symbol}`;
   }
   return `${display}`;
 }
@@ -23,6 +26,9 @@ export default function SummaryCards({
   past30DaysSum,
   newestPaymentDate,
 }) {
+  // Get currency from localStorage, default to CNY
+  const currency = (typeof window !== "undefined" && localStorage.getItem("currency")) || "CNY";
+
   // Use newest payment date as reference for time frames
   const referenceDate = newestPaymentDate ? new Date(newestPaymentDate) : new Date();
 
@@ -107,7 +113,7 @@ export default function SummaryCards({
                 {card.label}
               </Typography>
               <Typography variant="h4" sx={{ fontWeight: 800 }}>
-                {formatSum(card.sum)}
+                {formatSum(card.sum, currency)}
               </Typography>
               <Typography variant="caption" sx={{ opacity: 0.9 }}>
                 {card.caption}

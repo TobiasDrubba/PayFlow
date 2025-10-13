@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Dialog,
   DialogTitle,
@@ -11,7 +11,10 @@ import {
   Menu,
   MenuItem,
   Checkbox,
-  ListItemText
+  ListItemText,
+  FormControl,
+  InputLabel,
+  Select
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
@@ -65,6 +68,21 @@ export default function SettingsDialog({
     }
   };
 
+  // Currency selection logic
+  const currencyOptions = ["CNY", "EUR", "USD"];
+  const [currency, setCurrency] = useState(() => {
+    const stored = localStorage.getItem("currency");
+    return stored && currencyOptions.includes(stored) ? stored : "CNY";
+  });
+
+  useEffect(() => {
+    if (currency === "CNY") {
+      localStorage.removeItem("currency");
+    } else {
+      localStorage.setItem("currency", currency);
+    }
+  }, [currency]);
+
   return (
     <>
       <Dialog
@@ -87,6 +105,22 @@ export default function SettingsDialog({
             {/* View Section */}
             <Box>
               <span style={{ fontWeight: 600, fontSize: "1.1rem" }}>View</span>
+            </Box>
+            <Box>
+              {/* Currency Selector */}
+              <FormControl fullWidth sx={{ mt: 2 }}>
+                <InputLabel id="currency-select-label">Currency</InputLabel>
+                <Select
+                  labelId="currency-select-label"
+                  value={currency}
+                  label="Currency"
+                  onChange={e => setCurrency(e.target.value)}
+                >
+                  {currencyOptions.map(opt => (
+                    <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Box>
             <Box>
               <DateRangePicker

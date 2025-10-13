@@ -13,14 +13,18 @@ export function useTableColumns() {
     { id: "cust_category", label: "Category" },
   ]), []);
 
+  // Default columns and order: only show date, amount, category, merchant, note
+  const defaultColumnOrder = ["date", "amount", "cust_category", "merchant", "note"];
+  const defaultVisibleColumns = new Set(defaultColumnOrder);
+
   const [columnOrder, setColumnOrder] = useState(() => {
     const saved = localStorage.getItem("paymentsTable.columnOrder");
-    return saved ? JSON.parse(saved) : allColumns.map(c => c.id);
+    return saved ? JSON.parse(saved) : defaultColumnOrder;
   });
 
   const [visibleColumns, setVisibleColumns] = useState(() => {
     const saved = localStorage.getItem("paymentsTable.visibleColumns");
-    return new Set(saved ? JSON.parse(saved) : allColumns.map(c => c.id));
+    return new Set(saved ? JSON.parse(saved) : Array.from(defaultVisibleColumns));
   });
 
   useEffect(() => {

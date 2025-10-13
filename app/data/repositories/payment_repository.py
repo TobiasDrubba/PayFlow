@@ -2,12 +2,13 @@
 import json
 from typing import List
 
-from sqlalchemy import Column, DateTime
+from sqlalchemy import Column, Date, DateTime
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import sessionmaker
 
 from app.data.base import Base, engine
+from app.data.repositories.currency_repository import CurrencyRatesORM
 from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -55,9 +56,60 @@ def payment_to_domain(payment_orm: PaymentORM) -> Payment:
     )
 
 
-def get_all_payments(db, user_id: int) -> List[Payment]:
-    payments = db.query(PaymentORM).filter(PaymentORM.user_id == user_id).all()
-    return [payment_to_domain(p) for p in payments]
+def get_all_payments(db, user_id: int, currency: str | None = None) -> List[Payment]:
+    query = db.query(PaymentORM).filter(PaymentORM.user_id == user_id)
+    if currency in ("EUR", "USD"):
+        query = query.join(
+            CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date
+        )
+        if currency == "EUR":
+            payments = query.with_entities(
+                PaymentORM.id,
+                PaymentORM.date,
+                (PaymentORM.amount * CurrencyRatesORM.EURO).label("amount"),
+                PaymentORM.currency,
+                PaymentORM.merchant,
+                PaymentORM.auto_category,
+                PaymentORM.source,
+                PaymentORM.type,
+                PaymentORM.note,
+                PaymentORM.category,
+                PaymentORM.user_id,
+            ).all()
+        else:
+            payments = query.with_entities(
+                PaymentORM.id,
+                PaymentORM.date,
+                (PaymentORM.amount * CurrencyRatesORM.USD).label("amount"),
+                PaymentORM.currency,
+                PaymentORM.merchant,
+                PaymentORM.auto_category,
+                PaymentORM.source,
+                PaymentORM.type,
+                PaymentORM.note,
+                PaymentORM.category,
+                PaymentORM.user_id,
+            ).all()
+        # Map to domain objects
+        return [
+            Payment(
+                id=p[0],
+                date=p[1],
+                amount=p[2],
+                currency=currency,
+                merchant=p[4],
+                auto_category=p[5],
+                source=p[6],
+                type=p[7],
+                note=p[8],
+                category=p[9],
+                user_id=p[10],
+            )
+            for p in payments
+        ]
+    else:
+        payments = query.all()
+        return [payment_to_domain(p) for p in payments]
 
 
 def upsert_payments(db, payments: List[Payment], user_id: int) -> int:
@@ -217,3 +269,16 @@ def delete_all_user_data(db, user_id: int):
         synchronize_session=False
     )
     db.commit()
+
+
+def sum_payments_in_range(payments, start, end, currency=None, db=None, user_id=None):
+    # If payments are already converted, just sum as usual
+    if isinstance(payments, list) and all(isinstance(p, Payment) for p in payments):
+        return sum(p.amount for p in payments if start <= p.date <= end)
+
+    # If payments need to be fetched with conversion, do so here
+    if currency in ("EUR", "USD") and db is not None and user_id is not None:
+        payments = get_all_payments(db, user_id, currency)
+        return sum(p.amount for p in payments if start <= p.date <= end)
+
+    return 0
