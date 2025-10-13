@@ -9,3 +9,4 @@ sqlalchemy
 passlib
 jose
 psycopg2-binary
+requests
