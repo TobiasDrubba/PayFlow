@@ -363,22 +363,22 @@ export default function AggregationDialog({
             <ResponsiveSankey
               data={sankeyData}
               margin={{ top: 20, right: 160, bottom: 20, left: 160 }}
-              align="justify"
+              align="center"
               colors={{ scheme: "category10" }}
               nodeOpacity={1}
               nodeHoverOthersOpacity={0.35}
-              nodeThickness={18}
+              nodeThickness={12}
               nodeSpacing={24}
               nodeBorderWidth={0}
               nodeBorderRadius={3}
               linkOpacity={0.5}
               linkHoverOthersOpacity={0.1}
-              linkContract={3}
+              linkContract={1}
               enableLinkGradient={true}
               label={(n) => `${n.id} (${formatValue(n.value)})`}
               labelPosition="outside"
               labelOrientation="horizontal"
-              labelPadding={16}
+              labelPadding={20}
               labelTextColor={{
                 from: "color",
                 modifiers: [["darker", 1]],
