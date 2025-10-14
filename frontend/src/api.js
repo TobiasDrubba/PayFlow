@@ -61,11 +61,14 @@ function getCurrencyParam() {
   return null;
 }
 
-export async function fetchPayments() {
+export async function fetchPayments({ page = 1, pageSize = 50, search = "" } = {}) {
   const currency = getCurrencyParam();
-  const url = currency
-    ? `${API_URL}/payments?currency=${currency}`
-    : `${API_URL}/payments`;
+  const params = new URLSearchParams();
+  params.append("page", page);
+  params.append("page_size", pageSize);
+  if (search) params.append("search", search);
+  if (currency) params.append("currency", currency);
+  const url = `${API_URL}/payments?${params.toString()}`;
   const response = await fetchWithAuth(url);
   return response.json();
 }

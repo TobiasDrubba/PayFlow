@@ -2,7 +2,16 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from pydantic import BaseModel, Field, RootModel
 from sqlalchemy.orm import Session
 
@@ -79,6 +88,13 @@ class PaymentResponse(BaseModel):
         )
 
 
+class PaginatedPaymentsResponse(BaseModel):
+    payments: List[PaymentResponse]
+    total: int
+    page: int
+    page_size: int
+
+
 router = APIRouter(prefix="/api/payments", tags=["payments"])
 
 
@@ -90,14 +106,24 @@ def get_db():
         db.close()
 
 
-@router.get("", response_model=List[PaymentResponse])
+@router.get("", response_model=PaginatedPaymentsResponse)
 def get_all_payments_endpoint(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     currency: Optional[str] = None,
-) -> List[PaymentResponse]:
-    payments = list_payments(db, current_user.id, currency)
-    return [PaymentResponse.from_domain(p) for p in payments]
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
+    search: Optional[str] = Query(None, description="Search term"),
+) -> PaginatedPaymentsResponse:
+    payments, total = list_payments(
+        db, current_user.id, currency, page=page, page_size=page_size, search=search
+    )
+    return PaginatedPaymentsResponse(
+        payments=[PaymentResponse.from_domain(p) for p in payments],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/categories", response_model=List[str])
@@ -151,7 +177,7 @@ def aggregate_payments_endpoint(
     current_user=Depends(get_current_user),
     currency: Optional[str] = None,
 ):
-    payments = list_payments(db, current_user.id, currency)
+    payments, _ = list_payments(db, current_user.id, currency)
     category_tree = get_category_tree(db, current_user.id)
     result = aggregate_payments_by_category(
         payments, category_tree, start_date=req.start_date, end_date=req.end_date
@@ -171,7 +197,7 @@ def aggregate_payments_sankey_endpoint(
     current_user=Depends(get_current_user),
     currency: Optional[str] = None,
 ):
-    payments = list_payments(db, current_user.id, currency)
+    payments, _ = list_payments(db, current_user.id, currency)
     category_tree = get_category_tree(db, current_user.id)
     result = aggregate_payments_sankey(
         payments, category_tree, start_date=req.start_date, end_date=req.end_date

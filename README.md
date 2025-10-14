@@ -32,9 +32,10 @@ npm start
 # Production
 ## Build for production (optional)
 ```
-docker build -t tobiasdrubba/payflow-backend:latest .
-docker build -t tobiasdrubba/payflow-frontend:latest ./frontend/
+docker build -t tobiasdrubba/payflow-backend:latest . && \
 docker push tobiasdrubba/payflow-backend:latest
+
+docker build -t tobiasdrubba/payflow-frontend:latest ./frontend/ && \
 docker push tobiasdrubba/payflow-frontend:latest
 ```
 ## Run for production with Docker

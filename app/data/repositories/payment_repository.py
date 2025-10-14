@@ -4,7 +4,7 @@ from typing import List
 
 from sqlalchemy import Column, Date, DateTime
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Float, ForeignKey, Integer, String, Text, cast, or_
 from sqlalchemy.orm import sessionmaker
 
 from app.data.base import Base, engine
@@ -56,41 +56,72 @@ def payment_to_domain(payment_orm: PaymentORM) -> Payment:
     )
 
 
-def get_all_payments(db, user_id: int, currency: str | None = None) -> List[Payment]:
+def get_all_payments(
+    db,
+    user_id: int,
+    currency: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
+    search: str | None = None,
+) -> tuple[list[Payment], int]:
     query = db.query(PaymentORM).filter(PaymentORM.user_id == user_id)
+    if search:
+        term = f"%{search.lower()}%"
+        query = query.filter(
+            or_(
+                PaymentORM.merchant.ilike(term),
+                PaymentORM.auto_category.ilike(term),
+                PaymentORM.category.ilike(term),
+                PaymentORM.note.ilike(term),
+                PaymentORM.currency.ilike(term),
+                cast(PaymentORM.type, Text).ilike(term),
+                cast(PaymentORM.source, Text).ilike(term),
+            )
+        )
+    total = query.count()
+    query = query.order_by(PaymentORM.date.desc())
     if currency in ("EUR", "USD"):
         query = query.join(
             CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date
         )
         if currency == "EUR":
-            payments = query.with_entities(
-                PaymentORM.id,
-                PaymentORM.date,
-                (PaymentORM.amount * CurrencyRatesORM.EURO).label("amount"),
-                PaymentORM.currency,
-                PaymentORM.merchant,
-                PaymentORM.auto_category,
-                PaymentORM.source,
-                PaymentORM.type,
-                PaymentORM.note,
-                PaymentORM.category,
-                PaymentORM.user_id,
-            ).all()
+            payments = (
+                query.with_entities(
+                    PaymentORM.id,
+                    PaymentORM.date,
+                    (PaymentORM.amount * CurrencyRatesORM.EURO).label("amount"),
+                    PaymentORM.currency,
+                    PaymentORM.merchant,
+                    PaymentORM.auto_category,
+                    PaymentORM.source,
+                    PaymentORM.type,
+                    PaymentORM.note,
+                    PaymentORM.category,
+                    PaymentORM.user_id,
+                )
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+                .all()
+            )
         else:
-            payments = query.with_entities(
-                PaymentORM.id,
-                PaymentORM.date,
-                (PaymentORM.amount * CurrencyRatesORM.USD).label("amount"),
-                PaymentORM.currency,
-                PaymentORM.merchant,
-                PaymentORM.auto_category,
-                PaymentORM.source,
-                PaymentORM.type,
-                PaymentORM.note,
-                PaymentORM.category,
-                PaymentORM.user_id,
-            ).all()
-        # Map to domain objects
+            payments = (
+                query.with_entities(
+                    PaymentORM.id,
+                    PaymentORM.date,
+                    (PaymentORM.amount * CurrencyRatesORM.USD).label("amount"),
+                    PaymentORM.currency,
+                    PaymentORM.merchant,
+                    PaymentORM.auto_category,
+                    PaymentORM.source,
+                    PaymentORM.type,
+                    PaymentORM.note,
+                    PaymentORM.category,
+                    PaymentORM.user_id,
+                )
+                .offset((page - 1) * page_size)
+                .limit(page_size)
+                .all()
+            )
         return [
             Payment(
                 id=p[0],
@@ -106,10 +137,10 @@ def get_all_payments(db, user_id: int, currency: str | None = None) -> List[Paym
                 user_id=p[10],
             )
             for p in payments
-        ]
+        ], total
     else:
-        payments = query.all()
-        return [payment_to_domain(p) for p in payments]
+        payments = query.offset((page - 1) * page_size).limit(page_size).all()
+        return [payment_to_domain(p) for p in payments], total
 
 
 def upsert_payments(db, payments: List[Payment], user_id: int) -> int:

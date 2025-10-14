@@ -21,6 +21,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Pagination,
 } from "@mui/material";
 import { Search as SearchIcon, Upload as UploadIcon, Settings as SettingsIcon, Close as CloseIcon } from "@mui/icons-material";
 import { fetchAggregation, fetchSumsForRanges, deletePayments } from "./api";
@@ -40,9 +41,18 @@ import FileUpload from "./components/FileUpload";
 import SettingsDialog from "./components/SettingsDialog";
 
 export default function PaymentsTable() {
-  const { payments, setPayments, loading, error, refetchPayments } = usePayments();
-  const [search, setSearch] = useState("");
-  const [dateRange, setDateRange] = useState([null, null]);
+  const {
+    payments,
+    setPayments,
+    loading,
+    error,
+    total,
+    page,
+    setPage,
+    search,
+    setSearch,
+    refetchPayments,
+  } = usePayments();
 
   const {
     categories,
@@ -77,25 +87,8 @@ export default function PaymentsTable() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [contextMenu, setContextMenu] = useState(null);
 
-  // Filter payments by search term
-  const filteredPayments = useMemo(() => {
-    if (!search) return payments;
-    const term = search.toLowerCase();
-    return payments.filter(p =>
-      Object.values(p).some(val =>
-        (val ?? "").toString().toLowerCase().includes(term)
-      )
-    );
-  }, [payments, search]);
-
-  // Sort filtered payments by date descending
-  const sortedPayments = useMemo(() => {
-    return [...filteredPayments].sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [filteredPayments]);
-
-  const handleCategoryChangeWithDialog = (payment, value) => {
-    handleCategoryChange(payment, value, payments, setPayments);
-  };
+  // Use backend data directly
+  const displayedPayments = payments;
 
   // Aggregation dialog state
   const [aggregationOpen, setAggregationOpen] = useState(false);
@@ -148,6 +141,14 @@ export default function PaymentsTable() {
     setUploadDialogOpen(false);
   };
 
+  // Add missing state for dateRange
+  const [dateRange, setDateRange] = useState([null, null]);
+
+  // Add missing handler for category change dialog
+  const handleCategoryChangeWithDialog = (payment, value) => {
+    handleCategoryChange(payment, value);
+  };
+
   React.useEffect(() => {
     if (!payments.length) return;
     // Use newest payment date as reference for summary cards (except total/custom)
@@ -195,11 +196,11 @@ export default function PaymentsTable() {
           : [...prev, payment.id]
       );
     } else if (event.shiftKey && selectedIds.length > 0) {
-      const lastIndex = filteredPayments.findIndex((p) => p.id === selectedIds[selectedIds.length - 1]);
-      const thisIndex = filteredPayments.findIndex((p) => p.id === payment.id);
+      const lastIndex = displayedPayments.findIndex((p) => p.id === selectedIds[selectedIds.length - 1]);
+      const thisIndex = displayedPayments.findIndex((p) => p.id === payment.id);
       if (lastIndex !== -1 && thisIndex !== -1) {
         const [start, end] = [lastIndex, thisIndex].sort((a, b) => a - b);
-        const rangeIds = filteredPayments.slice(start, end + 1).map((p) => p.id);
+        const rangeIds = displayedPayments.slice(start, end + 1).map((p) => p.id);
         setSelectedIds(Array.from(new Set([...selectedIds, ...rangeIds])));
       }
     } else {
@@ -234,6 +235,24 @@ export default function PaymentsTable() {
       refetchPayments();
     } catch (e) {
       alert("Failed to delete payments.");
+    }
+  };
+
+  // Search handler: only set local value, don't trigger search
+  const [searchInput, setSearchInput] = useState(search);
+
+  const handleSearchInputChange = (e) => {
+    setSearchInput(e.target.value);
+  };
+
+  const handleSearchSubmit = () => {
+    setSearch(searchInput);
+    setPage(1);
+  };
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSearchSubmit();
     }
   };
 
@@ -359,8 +378,9 @@ export default function PaymentsTable() {
           <TextField
             fullWidth
             placeholder="Search transactions..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            value={searchInput}
+            onChange={handleSearchInputChange}
+            onKeyDown={handleSearchKeyDown}
             InputProps={{
               startAdornment: (
                 <InputAdornment position="start">
@@ -388,6 +408,14 @@ export default function PaymentsTable() {
           />
           <Button
             variant="contained"
+            startIcon={<SearchIcon />}
+            onClick={handleSearchSubmit}
+            className="btn-primary upload-btn"
+          >
+            Search
+          </Button>
+          <Button
+            variant="contained"
             startIcon={<UploadIcon />}
             onClick={() => setUploadDialogOpen(true)}
             className="btn-primary upload-btn"
@@ -401,10 +429,9 @@ export default function PaymentsTable() {
           <div className="table-header">
             <h2>Transactions</h2>
             <span className="table-count">
-              {filteredPayments.length} {filteredPayments.length === 1 ? 'item' : 'items'}
+              {total} {total === 1 ? 'item' : 'items'}
             </span>
           </div>
-
           <TableContainer sx={{ maxHeight: "65vh" }}>
             <DragDropContext onDragEnd={onDragEnd}>
               <Table className="payments-table" stickyHeader size="medium" aria-label="payments table">
@@ -443,7 +470,7 @@ export default function PaymentsTable() {
                   </Droppable>
                 </TableHead>
                 <TableBody>
-                  {sortedPayments.map((payment) => (
+                  {displayedPayments.map((payment) => (
                     <PaymentTableRow
                       key={payment.id}
                       payment={payment}
@@ -456,7 +483,7 @@ export default function PaymentsTable() {
                       onRowContextMenu={handleRowContextMenu}
                     />
                   ))}
-                  {sortedPayments.length === 0 && (
+                  {displayedPayments.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={visibleColumns.size || 1} className="empty-state">
                         <div className="empty-state-icon">📭</div>
@@ -468,6 +495,16 @@ export default function PaymentsTable() {
               </Table>
             </DragDropContext>
           </TableContainer>
+          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+            <Pagination
+              count={Math.ceil(total / 50)}
+              page={page}
+              onChange={(_, value) => setPage(value)}
+              color="primary"
+              shape="rounded"
+              size="large"
+            />
+          </Box>
         </div>
         {/* Context Menu for Delete */}
         <Menu

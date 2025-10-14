@@ -56,7 +56,7 @@ def update_category_tree(new_tree: Dict[str, Any], db: Session, user_id: int) ->
     old_child_categories = set(get_all_child_categories(old_tree))
     new_child_categories = set(get_all_child_categories(new_tree))
     deleted_categories = old_child_categories - new_child_categories
-    payments = get_all_payments(db, user_id)
+    payments, _ = get_all_payments(db, user_id)
     for p in payments:
         if p.category in deleted_categories:
             if p.id is None:
@@ -128,13 +128,18 @@ def _import_payments_with_parser(
 
 
 def list_payments(
-    db: Session, user_id: int, currency: str | None = None
-) -> List[Payment]:
-    return get_all_payments(db, user_id, currency)
+    db: Session,
+    user_id: int,
+    currency: str | None = None,
+    page: int = 1,
+    page_size: int = 50,
+    search: str | None = None,
+) -> tuple[list[Payment], int]:
+    return get_all_payments(db, user_id, currency, page, page_size, search)
 
 
 def get_payments_csv_stream(db: Session, user_id: int, currency: str | None = None):
-    payments = get_all_payments(db, user_id, currency)
+    payments, _ = get_all_payments(db, user_id, currency)
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(
@@ -323,7 +328,7 @@ def get_sums_for_ranges_service(
     user_id: int,
     currency: str | None = None,
 ) -> Dict[str, float]:
-    payments = get_all_payments(db, user_id, currency)
+    payments, _ = get_all_payments(db, user_id, currency)
     result = {}
     for name, range_dict in ranges.items():
         start = range_dict.get("start")
