@@ -3,6 +3,7 @@ import io
 import os
 import shutil
 import tempfile
+import time
 from datetime import datetime
 from typing import Any, Dict, List
 
@@ -29,6 +30,7 @@ from app.data.repositories.payment_repository import (
     get_all_payments,
     get_category_tree,
     save_category_tree,
+    sum_payments_by_category_db,
     sum_payments_in_db_range,
 )
 from app.data.repositories.payment_repository import (
@@ -351,17 +353,32 @@ def list_categories(db: Session, user_id: int) -> List[str]:
     return child_categories(db, user_id)
 
 
-def aggregate_payments_by_category(
-    payments: List[Payment], category_tree: dict, start_date=None, end_date=None
-):
-    return sum_payments_by_category(payments, category_tree, start_date, end_date)
-
-
 def aggregate_payments_sankey(
     payments: List[Payment], category_tree: dict, start_date=None, end_date=None
 ):
+    start_time = time.time()
     result, metadata = sum_payments_by_category(
         payments, category_tree, start_date, end_date
+    )
+    elapsed_ms = (time.time() - start_time) * 1000
+    print(f"sum_payments_by_category took {elapsed_ms:.2f} ms")
+    sankey_data = build_sankey_data(result, metadata, category_tree)
+    return sankey_data
+
+
+def aggregate_payments_sankey_db(
+    db,
+    user_id: int,
+    category_tree: dict,
+    start_date=None,
+    end_date=None,
+    currency: str | None = None,
+):
+    """
+    Efficiently aggregate payments by category using the database layer.
+    """
+    result, metadata = sum_payments_by_category_db(
+        db, user_id, category_tree, start_date, end_date, currency
     )
     sankey_data = build_sankey_data(result, metadata, category_tree)
     return sankey_data

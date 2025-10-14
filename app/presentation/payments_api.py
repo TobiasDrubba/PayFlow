@@ -15,11 +15,11 @@ from fastapi import (
 from pydantic import BaseModel, Field, RootModel
 from sqlalchemy.orm import Session
 
-from app.data.repositories.payment_repository import SessionLocal, get_all_payments
+from app.data.repositories.payment_repository import SessionLocal
 from app.domain.models.payment import Payment
 from app.domain.services.auth_service import get_current_user
 from app.domain.services.payment_service import (
-    aggregate_payments_sankey,
+    aggregate_payments_sankey_db,
     all_merchant_same_category_service,
     get_category_tree,
     get_payments_csv_stream,
@@ -182,13 +182,14 @@ def aggregate_payments_sankey_endpoint(
     current_user=Depends(get_current_user),
     currency: Optional[str] = None,
 ):
-    # Use get_all_payments with page_size large enough to fetch all payments
-    payments, _ = get_all_payments(
-        db, current_user.id, currency, page=1, page_size=100000
-    )
     category_tree = get_category_tree(db, current_user.id)
-    result = aggregate_payments_sankey(
-        payments, category_tree, start_date=req.start_date, end_date=req.end_date
+    result = aggregate_payments_sankey_db(
+        db,
+        current_user.id,
+        category_tree,
+        start_date=req.start_date,
+        end_date=req.end_date,
+        currency=currency,
     )
     return result
 

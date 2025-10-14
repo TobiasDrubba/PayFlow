@@ -377,3 +377,109 @@ def all_merchant_same_category_db(
         .scalar()
     )
     return total_count == category_count
+
+
+def sum_payments_by_category_db(
+    db,
+    user_id: int,
+    category_tree: dict,
+    start_date=None,
+    end_date=None,
+    currency: str | None = None,
+):
+    """
+    Aggregate payment amounts by category using the database layer.
+    Returns: dict {category_name: sum, ...}, metadata
+    """
+    from app.domain.models.payment import PaymentType
+
+    # Build all leaf categories and their paths
+    def collect_paths(tree, path=None, paths=None):
+        if tree is None:
+            return paths if paths is not None else []
+        if paths is None:
+            paths = []
+        if path is None:
+            path = []
+        for k, v in tree.items() if isinstance(tree, dict) else []:
+            current_path = path + [k]
+            if v is None:
+                paths.append(current_path)
+            elif isinstance(v, dict):
+                if not v:
+                    paths.append(current_path)
+                else:
+                    collect_paths(v, current_path, paths)
+        return paths
+
+    all_paths = collect_paths(category_tree)
+    leaf_to_path = {p[-1]: p for p in all_paths}
+    all_cats = set(cat for path in all_paths for cat in path)
+
+    # Build base query
+    filters = [PaymentORM.user_id == user_id, PaymentORM.type != PaymentType.ABORT]
+    if start_date:
+        filters.append(PaymentORM.date >= start_date)
+    if end_date:
+        filters.append(PaymentORM.date <= end_date)
+
+    # Currency conversion
+    if currency in ("EUR", "USD"):
+        if currency == "EUR":
+            amount_expr = PaymentORM.amount * CurrencyRatesORM.EURO
+        else:
+            amount_expr = PaymentORM.amount * CurrencyRatesORM.USD
+        query = db.query(
+            PaymentORM.category,
+            func.sum(amount_expr).label("sum"),
+        ).join(CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date)
+    else:
+        query = db.query(
+            PaymentORM.category,
+            func.sum(PaymentORM.amount).label("sum"),
+        )
+
+    query = query.filter(*filters).group_by(PaymentORM.category)
+    rows = query.all()
+
+    # Prepare result dict for all categories
+    result = {cat: 0.0 for cat in all_cats}
+    result["no category"] = 0.0
+    result["invalid category"] = 0.0
+    total_sum = 0.0
+    invalid_categories_set = set()
+
+    # Map DB results to aggregation
+    for cat, s in rows:
+        s = s or 0.0
+        cat_key = cat.strip() if cat else None
+        if not cat_key:
+            result["no category"] += s
+            total_sum += s
+            continue
+        path = leaf_to_path.get(cat_key)
+        if not path:
+            # Try partial match (for parent categories)
+            for k, v in leaf_to_path.items():
+                if cat_key == k or cat_key in v:
+                    path = v
+                    break
+        if not path:
+            result["invalid category"] += s
+            invalid_categories_set.add(cat_key)
+            total_sum += s
+            continue
+        for cat_in_path in path:
+            result[cat_in_path] += s
+        total_sum += s
+
+    # Round all sums to zero decimal places
+    for key in result:
+        result[key] = round(result[key])
+
+    output = {k: -v for k, v in result.items() if v != 0.0}
+    metadata = {
+        "total sum": round(total_sum),
+        "invalid categories": sorted(list(invalid_categories_set)),
+    }
+    return output, metadata
