@@ -317,6 +317,7 @@ export default function SettingsDialog({
         onClose={() => setAddPaymentOpen(false)}
         categories={categories}
         onSubmitted={refetchPayments}
+        currencyOptions={currencyOptions}
       />
       <ConfirmDialog
         open={deleteDialogOpen}

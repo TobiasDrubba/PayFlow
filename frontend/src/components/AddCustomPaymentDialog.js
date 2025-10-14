@@ -33,7 +33,7 @@ const PAYMENT_SOURCES = [
   { value: "Other", label: "Other" },
 ];
 
-export default function AddCustomPaymentDialog({ open, onClose, categories = [], onSubmitted }) {
+export default function AddCustomPaymentDialog({ open, onClose, categories = [], onSubmitted, currencyOptions = ["CNY", "EUR", "USD"] }) {
   const [form, setForm] = useState({
     date: new Date(),
     amount: "",
@@ -146,13 +146,19 @@ export default function AddCustomPaymentDialog({ open, onClose, categories = [],
             }}
             required
           />
+          {/* Currency dropdown, matches SettingsDialog appearance but is independent */}
           <TextField
+            select
             label="Currency"
             value={form.currency}
             onChange={handleChange("currency")}
             fullWidth
             required
-          />
+          >
+            {currencyOptions.map(opt => (
+              <MenuItem key={opt} value={opt}>{opt}</MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Merchant"
             value={form.merchant}

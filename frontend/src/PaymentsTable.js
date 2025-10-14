@@ -73,7 +73,7 @@ export default function PaymentsTable() {
   } = useTableColumns();
 
   const [summarySums, setSummarySums] = useState({
-    total: 0,
+    total: -1,
     month: 0,
     past7: 0,
     past30: 0,
@@ -144,6 +144,7 @@ export default function PaymentsTable() {
   const handleUploadSuccess = () => {
     refetchPayments();
     setUploadDialogOpen(false);
+    setSummaryRefreshKey(k => k + 1); // trigger summary refresh
   };
 
   // Add missing state for dateRange
@@ -157,8 +158,19 @@ export default function PaymentsTable() {
   // Add a loading state for summary cards
   const [summaryLoading, setSummaryLoading] = useState(true);
 
+  // Add a key to trigger summary refresh
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0); // start at 0
+
+  // When payments are loaded for the first time, trigger summary refresh
   React.useEffect(() => {
-    if (!payments.length) {
+    if (payments.length > 0 && summaryRefreshKey === 0) {
+      setSummaryRefreshKey(1);
+    }
+  }, [payments, summaryRefreshKey]);
+
+  // Only refetch summary cards when summaryRefreshKey or dateRange changes
+  React.useEffect(() => {
+    if (!payments.length || summaryRefreshKey === 0) {
       setSummaryLoading(false);
       return;
     }
@@ -199,7 +211,7 @@ export default function PaymentsTable() {
       .then(setSummarySums)
       .catch(() => {})
       .finally(() => setSummaryLoading(false));
-  }, [total, dateRange]);
+  }, [summaryRefreshKey, dateRange]);
 
   // Handle row selection
   const handleRowClick = (payment, event) => {
@@ -251,6 +263,7 @@ export default function PaymentsTable() {
       await deletePayments(selectedIds);
       setSelectedIds([]);
       refetchPayments();
+      setSummaryRefreshKey(k => k + 1); // trigger summary refresh
     } catch (e) {
       alert("Failed to delete payments.");
     }
@@ -343,7 +356,10 @@ export default function PaymentsTable() {
         visibleColumns={visibleColumns}
         toggleColumn={toggleColumn}
         categories={categories}
-        refetchPayments={refetchPayments}
+        refetchPayments={() => {
+          refetchPayments();
+          setSummaryRefreshKey(k => k + 1); // trigger summary refresh on custom payment
+        }}
       />
 
       <ConfirmDialog
@@ -387,15 +403,18 @@ export default function PaymentsTable() {
               </Typography>
             </div>
           ) : (
-            <SummaryCards
-              totalSum={summarySums.total}
-              customSum={summarySums.custom}
-              dateRange={dateRange}
-              onAggregate={handleSummaryCardAggregate}
-              past7DaysSum={summarySums.past7}
-              past30DaysSum={summarySums.past30}
-              newestPaymentDate={newestPaymentDate}
-            />
+            // Only render SummaryCards if not loading and payments exist
+            summarySums.total != -1 && (
+              <SummaryCards
+                totalSum={summarySums.total}
+                customSum={summarySums.custom}
+                dateRange={dateRange}
+                onAggregate={handleSummaryCardAggregate}
+                past7DaysSum={summarySums.past7}
+                past30DaysSum={summarySums.past30}
+                newestPaymentDate={newestPaymentDate}
+              />
+            )
           )}
         </Box>
 

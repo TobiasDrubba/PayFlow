@@ -45,6 +45,8 @@ from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 create_payment_tables()
 
+SUPPORTED_CURRENCIES = {"CNY", "EUR", "USD"}
+
 
 def child_categories(db: Session, user_id: int) -> List[str]:
     tree = get_category_tree(db, user_id)
@@ -197,6 +199,10 @@ def submit_custom_payment(
     note="",
     category="",
 ):
+    # Assert currency is valid
+    if currency not in SUPPORTED_CURRENCIES:
+        raise ValueError(f"Unsupported currency: {currency}")
+
     try:
         payment_type_enum = PaymentType(payment_type)
     except Exception:
@@ -215,32 +221,31 @@ def submit_custom_payment(
         if category not in valid_categories:
             raise ValueError(f"Invalid child category: {category}")
 
+    # Ensure the rates are present, else fetch
+    rate_obj = get_currency_rates(db, date)
+    euro_rate = rate_obj.EURO if rate_obj else None
+    usd_rate = rate_obj.USD if rate_obj else None
+
+    # Fetch from API if missing
+    if euro_rate is None or usd_rate is None:
+        api_url = (
+            f"https://api.frankfurter.dev/v1/{date.strftime('%Y-%m-%d')}"
+            f"?base=CNY&symbols=EUR,USD"
+        )
+        try:
+            response = requests.get(api_url)
+            response.raise_for_status()
+            data = response.json()
+            euro_rate = data["rates"].get("EUR")
+            usd_rate = data["rates"].get("USD")
+            if euro_rate is None or usd_rate is None:
+                raise ValueError("Exchange rate not found in API response")
+            set_currency_rates(db, date, euro_rate, usd_rate)
+        except Exception as e:
+            raise ValueError(f"Failed to fetch exchange rate: {e}")
+
     # Convert to CNY if currency is EUR or USD
     if currency in ("EUR", "USD"):
-        rate_obj = get_currency_rates(db, date)
-        euro_rate = rate_obj.EURO if rate_obj else None
-        usd_rate = rate_obj.USD if rate_obj else None
-
-        # Fetch from API if missing
-        if (currency == "EUR" and euro_rate is None) or (
-            currency == "USD" and usd_rate is None
-        ):
-            api_url = (
-                f"https://api.frankfurter.dev/v1/{date.strftime('%Y-%m-%d')}"
-                f"?base=CNY&symbols=EUR,USD"
-            )
-            try:
-                response = requests.get(api_url)
-                response.raise_for_status()
-                data = response.json()
-                euro_rate = data["rates"].get("EUR")
-                usd_rate = data["rates"].get("USD")
-                if euro_rate is None or usd_rate is None:
-                    raise ValueError("Exchange rate not found in API response")
-                set_currency_rates(db, date, euro_rate, usd_rate)
-            except Exception as e:
-                raise ValueError(f"Failed to fetch exchange rate: {e}")
-
         # Calculate amount in CNY by dividing through the rate
         if currency == "EUR":
             rate = euro_rate
@@ -393,6 +398,9 @@ def add_payments_list(
     """
     added_payments = []
     for data in payments_data:
+        # Assert currency is valid
+        if data["currency"] not in SUPPORTED_CURRENCIES:
+            raise ValueError(f"Unsupported currency: {data['currency']}")
         payment_type_enum = PaymentType(data["type"])
         payment_source = PaymentSource(data.get("source", PaymentSource.OTHER.value))
         payment = Payment(
