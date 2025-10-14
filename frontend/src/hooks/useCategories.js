@@ -1,12 +1,23 @@
 import { useState, useEffect } from "react";
-import {fetchCategories, fetchCategoryTree, updateCategoryTree, updatePaymentCategory} from "../api";
+import {fetchCategories, fetchCategoryTree, updateCategoryTree, updatePaymentCategory, allMerchantSameCategory} from "../api";
 import { useSnackbar } from "notistack";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 export function useCategories(refetchPayments) {
   const [categories, setCategories] = useState([]);
   const [categoryTree, setCategoryTree] = useState({});
   const [managerOpen, setManagerOpen] = useState(false);
   const { enqueueSnackbar } = useSnackbar();
+
+  // Dialog state for category change confirmation
+  const [confirmCategoryDialog, setConfirmCategoryDialog] = useState({
+    open: false,
+    payment: null,
+    newCat: "",
+    payments: [],
+    setPayments: null,
+    onConfirm: null,
+  });
 
   // Fetch categories and category tree on mount
   useEffect(() => {
@@ -34,26 +45,37 @@ export function useCategories(refetchPayments) {
       .catch(() => setCategories([]));
   };
 
-  // Helper to check if all merchant's transactions have the same category
-  const allMerchantSameCategory = (merchant, currentCat, payments) => {
-    const txs = payments.filter(p => p.merchant === merchant);
-    return txs.length > 1 && txs.every(p => p.cust_category === currentCat);
+  // Helper to check if all merchant's transactions have the same category (backend)
+  const checkAllMerchantSameCategory = async (merchant, currentCat) => {
+    try {
+      const res = await allMerchantSameCategory(merchant, currentCat);
+      return res.all_same;
+    } catch {
+      return false;
+    }
   };
 
-  // Update category (with prompt)
-  const handleCategoryChange = (payment, newCat, payments, setPayments) => {
-    if (allMerchantSameCategory(payment.merchant, payment.cust_category, payments)) {
-      if (window.confirm("Change all categories of that merchant's transaction?")) {
-        // Bulk update
-        updatePaymentCategory(payment.id, newCat, true).then(() => {
+  // Update category (with ConfirmDialog)
+  const handleCategoryChange = async (payment, newCat, payments, setPayments) => {
+    const allSame = await checkAllMerchantSameCategory(payment.merchant, payment.cust_category);
+    if (allSame) {
+      setConfirmCategoryDialog({
+        open: true,
+        payment,
+        newCat,
+        payments,
+        setPayments,
+        onConfirm: async () => {
+          await updatePaymentCategory(payment.id, newCat, true);
           setPayments(payments =>
             payments.map(p =>
               p.merchant === payment.merchant ? { ...p, cust_category: newCat } : p
             )
           );
-        });
-        return;
-      }
+          setConfirmCategoryDialog(dialog => ({ ...dialog, open: false }));
+        }
+      });
+      return;
     }
     // Single update
     updatePaymentCategory(payment.id, newCat, false).then(() => {
@@ -65,12 +87,26 @@ export function useCategories(refetchPayments) {
     });
   };
 
+  // ConfirmDialog component for category change
+  const CategoryConfirmDialog = () => (
+    <ConfirmDialog
+      open={confirmCategoryDialog.open}
+      onClose={() => setConfirmCategoryDialog(dialog => ({ ...dialog, open: false }))}
+      onConfirm={confirmCategoryDialog.onConfirm}
+      title="Change All Merchant Categories?"
+      description="Change all categories of that merchant's transactions? This action cannot be undone."
+      confirmText="Change All"
+      cancelText="Cancel"
+    />
+  );
+
   return {
     categories,
     categoryTree,
     managerOpen,
     setManagerOpen,
     handleUpdateCategoryTree,
-    handleCategoryChange
+    handleCategoryChange,
+    CategoryConfirmDialog
   };
 }

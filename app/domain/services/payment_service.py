@@ -16,7 +16,11 @@ from app.data.repositories.currency_repository import (
     set_currency_rates,
     upsert_rates_from_api,
 )
-from app.data.repositories.payment_repository import add_payment, create_payment_tables
+from app.data.repositories.payment_repository import (
+    add_payment,
+    all_merchant_same_category_db,
+    create_payment_tables,
+)
 from app.data.repositories.payment_repository import (
     delete_payments_by_ids as repo_delete_payments_by_ids,
 )
@@ -383,3 +387,9 @@ def add_payments_list(
         added = add_payment(db, payment, user_id)
         added_payments.append(added)
     return added_payments
+
+
+def all_merchant_same_category_service(
+    db: Session, user_id: int, merchant: str, cust_category: str
+) -> bool:
+    return all_merchant_same_category_db(db, user_id, merchant, cust_category)

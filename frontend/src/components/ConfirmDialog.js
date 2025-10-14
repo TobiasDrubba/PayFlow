@@ -10,7 +10,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 
-export default function ConfirmDeleteDialog({
+export default function ConfirmDialog({
   open,
   onClose,
   onConfirm,

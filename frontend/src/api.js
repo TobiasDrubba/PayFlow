@@ -222,3 +222,14 @@ export async function changePassword(newPassword) {
   );
   return response.json();
 }
+
+export async function allMerchantSameCategory(merchant, custCategory) {
+  const response = await fetchWithAuth(
+    `${API_URL}/payments/all-merchant-same-category`,
+    {
+      method: "POST",
+      body: { merchant, cust_category: custCategory },
+    }
+  );
+  return response.json();
+}

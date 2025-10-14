@@ -313,3 +313,33 @@ def sum_payments_in_range(payments, start, end, currency=None, db=None, user_id=
         return sum(p.amount for p in payments if start <= p.date <= end)
 
     return 0
+
+
+def all_merchant_same_category_db(
+    db, user_id: int, merchant: str, cust_category: str
+) -> bool:
+    """
+    Returns True if all payments for the given user and merchant have
+    the given category, and there is more than one such payment.
+    """
+    from sqlalchemy import func
+
+    # Count total payments for merchant
+    total_count = (
+        db.query(func.count(PaymentORM.id))
+        .filter(PaymentORM.user_id == user_id, PaymentORM.merchant == merchant)
+        .scalar()
+    )
+    if total_count <= 1:
+        return False
+    # Count payments for merchant with the given category
+    category_count = (
+        db.query(func.count(PaymentORM.id))
+        .filter(
+            PaymentORM.user_id == user_id,
+            PaymentORM.merchant == merchant,
+            PaymentORM.category == cust_category,
+        )
+        .scalar()
+    )
+    return total_count == category_count

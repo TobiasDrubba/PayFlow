@@ -20,7 +20,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { DateRangePicker } from "@mui/x-date-pickers-pro/DateRangePicker";
 import { downloadAllPayments, deleteUserAccount } from "../api";
 import AddCustomPaymentDialog from "./AddCustomPaymentDialog";
-import ConfirmDeleteDialog from "./ConfirmDeleteDialog";
+import ConfirmDialog from "./ConfirmDialog";
 import ChangeUsernameDialog from "./ChangeUsernameDialog";
 import ChangePasswordDialog from "./ChangePasswordDialog";
 
@@ -318,7 +318,7 @@ export default function SettingsDialog({
         categories={categories}
         onSubmitted={refetchPayments}
       />
-      <ConfirmDeleteDialog
+      <ConfirmDialog
         open={deleteDialogOpen}
         onClose={() => setDeleteDialogOpen(false)}
         onConfirm={handleDeleteAccount}

@@ -21,6 +21,7 @@ from app.domain.services.auth_service import get_current_user
 from app.domain.services.payment_service import (
     aggregate_payments_by_category,
     aggregate_payments_sankey,
+    all_merchant_same_category_service,
     get_category_tree,
     get_payments_csv_stream,
     get_sums_for_ranges_service,
@@ -339,5 +340,25 @@ def fetch_exchange_rates_endpoint(
     try:
         fetch_and_store_exchange_rates(db, req.start, req.end)
         return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+class AllMerchantSameCategoryRequest(BaseModel):
+    merchant: str
+    cust_category: str
+
+
+@router.post("/all-merchant-same-category")
+def all_merchant_same_category(
+    req: AllMerchantSameCategoryRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    try:
+        result = all_merchant_same_category_service(
+            db, current_user.id, req.merchant, req.cust_category
+        )
+        return {"all_same": result}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

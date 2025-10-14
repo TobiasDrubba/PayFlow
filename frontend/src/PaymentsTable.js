@@ -39,6 +39,7 @@ import PaymentTableRow from "./components/PaymentTableRow";
 import AggregationDialog from "./components/AggregationDialog";
 import FileUpload from "./components/FileUpload";
 import SettingsDialog from "./components/SettingsDialog";
+import ConfirmDialog from "./components/ConfirmDialog";
 
 export default function PaymentsTable() {
   const {
@@ -60,7 +61,8 @@ export default function PaymentsTable() {
     managerOpen,
     setManagerOpen,
     handleUpdateCategoryTree,
-    handleCategoryChange
+    handleCategoryChange,
+    CategoryConfirmDialog
   } = useCategories(refetchPayments);
 
   const {
@@ -96,6 +98,9 @@ export default function PaymentsTable() {
   const [aggregationLoading, setAggregationLoading] = useState(false);
   const [aggregationError, setAggregationError] = useState("");
   const [aggregationTitle, setAggregationTitle] = useState("");
+
+  // Confirm dialog state for delete
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   // Find newest payment date for summary cards reference
   const newestPaymentDate = React.useMemo(() => {
@@ -146,11 +151,18 @@ export default function PaymentsTable() {
 
   // Add missing handler for category change dialog
   const handleCategoryChangeWithDialog = (payment, value) => {
-    handleCategoryChange(payment, value);
+    handleCategoryChange(payment, value, payments, setPayments);
   };
 
+  // Add a loading state for summary cards
+  const [summaryLoading, setSummaryLoading] = useState(true);
+
   React.useEffect(() => {
-    if (!payments.length) return;
+    if (!payments.length) {
+      setSummaryLoading(false);
+      return;
+    }
+    setSummaryLoading(true);
     // Use newest payment date as reference for summary cards (except total/custom)
     const newest = payments.reduce((latest, p) => {
       const d = new Date(p.date);
@@ -171,7 +183,8 @@ export default function PaymentsTable() {
           ...prev,
           custom: res.custom ?? 0
         })))
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setSummaryLoading(false));
       return;
     }
 
@@ -184,8 +197,9 @@ export default function PaymentsTable() {
     };
     fetchSumsForRanges(ranges)
       .then(setSummarySums)
-      .catch(() => {});
-  }, [payments, dateRange]);
+      .catch(() => {})
+      .finally(() => setSummaryLoading(false));
+  }, [total, dateRange]);
 
   // Handle row selection
   const handleRowClick = (payment, event) => {
@@ -226,9 +240,13 @@ export default function PaymentsTable() {
   };
 
   const handleDeleteSelected = async () => {
+    setConfirmDeleteOpen(true);
     handleCloseContextMenu();
+  };
+
+  const handleConfirmDelete = async () => {
+    setConfirmDeleteOpen(false);
     if (selectedIds.length === 0) return;
-    if (!window.confirm(`Delete ${selectedIds.length} selected payment(s)?`)) return;
     try {
       await deletePayments(selectedIds);
       setSelectedIds([]);
@@ -255,21 +273,6 @@ export default function PaymentsTable() {
       handleSearchSubmit();
     }
   };
-
-  if (loading) {
-    return (
-      <div className="payments-container">
-        <div className="loading-container">
-          <div className="loading-spinner">
-            <CircularProgress size={64} thickness={3.5} sx={{ color: '#667eea' }} />
-          </div>
-          <Typography className="loading-text">
-            Preparing your beautiful dashboard…
-          </Typography>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (
@@ -343,6 +346,16 @@ export default function PaymentsTable() {
         refetchPayments={refetchPayments}
       />
 
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title={`Delete ${selectedIds.length > 1 ? "Selected Payments" : "Payment"}`}
+        description={`Are you sure you want to delete ${selectedIds.length} payment${selectedIds.length > 1 ? "s" : ""}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+
       <div className="payments-container animate-in">
         {/* Header */}
         <div className="page-header">
@@ -363,15 +376,28 @@ export default function PaymentsTable() {
         </div>
 
         {/* Summary Cards */}
-        <SummaryCards
-          totalSum={summarySums.total}
-          customSum={summarySums.custom}
-          dateRange={dateRange}
-          onAggregate={handleSummaryCardAggregate}
-          past7DaysSum={summarySums.past7}
-          past30DaysSum={summarySums.past30}
-          newestPaymentDate={newestPaymentDate}
-        />
+        <Box sx={{ position: "relative", minHeight: "120px" }}>
+          {summaryLoading ? (
+            <div className="loading-container" style={{ height: "120px", marginBottom: 24 }}>
+              <div className="loading-spinner">
+                <CircularProgress size={48} thickness={3.5} sx={{ color: '#667eea' }} />
+              </div>
+              <Typography className="loading-text">
+                Loading summary cards…
+              </Typography>
+            </div>
+          ) : (
+            <SummaryCards
+              totalSum={summarySums.total}
+              customSum={summarySums.custom}
+              dateRange={dateRange}
+              onAggregate={handleSummaryCardAggregate}
+              past7DaysSum={summarySums.past7}
+              past30DaysSum={summarySums.past30}
+              newestPaymentDate={newestPaymentDate}
+            />
+          )}
+        </Box>
 
         {/* Search Bar and Upload Button */}
         <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
@@ -423,8 +449,6 @@ export default function PaymentsTable() {
             Upload
           </Button>
         </Box>
-
-        {/* Table */}
         <div className="table-container animate-in">
           <div className="table-header">
             <h2>Transactions</h2>
@@ -432,7 +456,25 @@ export default function PaymentsTable() {
               {total} {total === 1 ? 'item' : 'items'}
             </span>
           </div>
-          <TableContainer sx={{ maxHeight: "65vh" }}>
+          <TableContainer sx={{ maxHeight: "65vh", position: "relative" }}>
+            {loading && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  height: "100%",
+                  bgcolor: "rgba(255,255,255,0.7)",
+                  zIndex: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CircularProgress size={48} thickness={3.5} sx={{ color: '#667eea' }} />
+              </Box>
+            )}
             <DragDropContext onDragEnd={onDragEnd}>
               <Table className="payments-table" stickyHeader size="medium" aria-label="payments table">
                 <TableHead>
@@ -522,6 +564,7 @@ export default function PaymentsTable() {
           </MenuItem>
         </Menu>
       </div>
+      <CategoryConfirmDialog />
     </LocalizationProvider>
   );
 }
