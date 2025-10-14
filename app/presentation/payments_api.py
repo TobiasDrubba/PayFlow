@@ -15,11 +15,10 @@ from fastapi import (
 from pydantic import BaseModel, Field, RootModel
 from sqlalchemy.orm import Session
 
-from app.data.repositories.payment_repository import SessionLocal
+from app.data.repositories.payment_repository import SessionLocal, get_all_payments
 from app.domain.models.payment import Payment
 from app.domain.services.auth_service import get_current_user
 from app.domain.services.payment_service import (
-    aggregate_payments_by_category,
     aggregate_payments_sankey,
     all_merchant_same_category_service,
     get_category_tree,
@@ -57,7 +56,7 @@ class AggregateRequest(BaseModel):
 
 class SumsRequest(RootModel):
     root: Dict[str, Dict[str, Optional[datetime]]] = Field(
-        ..., description="Mapping from name to {start, end}"
+        ..., description="Mapping from name to {start, end, days}"
     )
 
 
@@ -171,21 +170,6 @@ def update_payment_cust_category(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/aggregate")
-def aggregate_payments_endpoint(
-    req: AggregateRequest,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-    currency: Optional[str] = None,
-):
-    payments, _ = list_payments(db, current_user.id, currency)
-    category_tree = get_category_tree(db, current_user.id)
-    result = aggregate_payments_by_category(
-        payments, category_tree, start_date=req.start_date, end_date=req.end_date
-    )
-    return result
-
-
 class SankeyAggregateRequest(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
@@ -198,7 +182,10 @@ def aggregate_payments_sankey_endpoint(
     current_user=Depends(get_current_user),
     currency: Optional[str] = None,
 ):
-    payments, _ = list_payments(db, current_user.id, currency)
+    # Use get_all_payments with page_size large enough to fetch all payments
+    payments, _ = get_all_payments(
+        db, current_user.id, currency, page=1, page_size=100000
+    )
     category_tree = get_category_tree(db, current_user.id)
     result = aggregate_payments_sankey(
         payments, category_tree, start_date=req.start_date, end_date=req.end_date
@@ -212,8 +199,13 @@ def get_sums_for_ranges(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     currency: Optional[str] = None,
+    days: Optional[int] = Query(
+        None, description="Sum payments within X days before newest payment"
+    ),
 ):
-    return get_sums_for_ranges_service(req.root, db, current_user.id, currency)
+    return get_sums_for_ranges_service(
+        req.root, db, current_user.id, currency, days=days
+    )
 
 
 @router.post("/import")

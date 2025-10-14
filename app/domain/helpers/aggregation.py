@@ -93,7 +93,7 @@ def sum_payments_by_category(
 
     output = {k: -v for k, v in result.items() if v != 0.0}
     metadata = {
-        "total sum": total_sum,
+        "total sum": round(total_sum),
         "invalid categories": sorted(list(invalid_categories_set)),
     }
 

@@ -11,11 +11,7 @@ def get_signed_amount(payment: Payment) -> float:
     """
     if payment.type == PaymentType.ABORT:
         return 0.0
-    if payment.type == PaymentType.EXPENSE:
-        return -payment.amount
-    elif payment.type in (PaymentType.INCOME, PaymentType.REFUND):
-        return payment.amount
-    return 0.0
+    return payment.amount
 
 
 def sum_payments_in_range(

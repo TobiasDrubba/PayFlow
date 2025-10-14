@@ -43,6 +43,7 @@ def parse_alipay_file(filepath: str) -> List[Payment]:
                 p_type = PaymentType.INCOME
             elif "expense" in raw_cat or "支出" in raw_cat:
                 p_type = PaymentType.EXPENSE
+                amount *= -1
             else:
                 # Check if transaction is abort or refund
                 if "refund" in cat or "退款" in cat:

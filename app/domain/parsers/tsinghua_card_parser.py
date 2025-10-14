@@ -50,6 +50,7 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
                 p_type = PaymentType.INCOME
             elif "持卡人消费" in raw_cat:
                 p_type = PaymentType.EXPENSE
+                amount *= -1
             else:
                 raise ValueError("Transaction type is not recognized.")
             # Determine the category based on the time of day.

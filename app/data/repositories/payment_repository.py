@@ -1,10 +1,11 @@
 # app/data/repository.py
 import json
+from datetime import datetime, timedelta
 from typing import List
 
 from sqlalchemy import Column, Date, DateTime
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Float, ForeignKey, Integer, String, Text, cast, or_
+from sqlalchemy import Float, ForeignKey, Integer, String, Text, cast, func, or_
 from sqlalchemy.orm import sessionmaker
 
 from app.data.base import Base, engine
@@ -302,17 +303,51 @@ def delete_all_user_data(db, user_id: int):
     db.commit()
 
 
-def sum_payments_in_range(payments, start, end, currency=None, db=None, user_id=None):
-    # If payments are already converted, just sum as usual
-    if isinstance(payments, list) and all(isinstance(p, Payment) for p in payments):
-        return sum(p.amount for p in payments if start <= p.date <= end)
+def sum_payments_in_db_range(
+    db,
+    user_id: int,
+    start: datetime | None,
+    end: datetime | None,
+    currency: str | None = None,
+    days: int | None = None,
+) -> float:
+    filters = [PaymentORM.user_id == user_id, PaymentORM.type != PaymentType.ABORT]
+    if days is not None and days > 0:
+        newest_payment = (
+            db.query(func.max(PaymentORM.date))
+            .filter(PaymentORM.user_id == user_id)
+            .scalar()
+        )
+        if newest_payment:
+            start_date = (
+                newest_payment.date()
+                if hasattr(newest_payment, "date")
+                else newest_payment
+            )
+            start_date = start_date - timedelta(days=days - 1)
+            filters.append(PaymentORM.date >= start_date)
+            filters.append(PaymentORM.date <= newest_payment)
+    else:
+        if start:
+            filters.append(PaymentORM.date >= start)
+        if end:
+            filters.append(PaymentORM.date <= end)
 
-    # If payments need to be fetched with conversion, do so here
-    if currency in ("EUR", "USD") and db is not None and user_id is not None:
-        payments = get_all_payments(db, user_id, currency)
-        return sum(p.amount for p in payments if start <= p.date <= end)
-
-    return 0
+    if currency in ("EUR", "USD"):
+        if currency == "EUR":
+            amount_expr = PaymentORM.amount * CurrencyRatesORM.EURO
+        else:
+            amount_expr = PaymentORM.amount * CurrencyRatesORM.USD
+        total = (
+            db.query(func.sum(amount_expr))
+            .join(CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date)
+            .filter(*filters)
+            .scalar()
+        )
+        return total or 0.0
+    else:
+        total = db.query(func.sum(PaymentORM.amount)).filter(*filters).scalar()
+        return total or 0.0
 
 
 def all_merchant_same_category_db(
@@ -322,7 +357,6 @@ def all_merchant_same_category_db(
     Returns True if all payments for the given user and merchant have
     the given category, and there is more than one such payment.
     """
-    from sqlalchemy import func
 
     # Count total payments for merchant
     total_count = (

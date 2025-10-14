@@ -29,6 +29,7 @@ from app.data.repositories.payment_repository import (
     get_all_payments,
     get_category_tree,
     save_category_tree,
+    sum_payments_in_db_range,
 )
 from app.data.repositories.payment_repository import (
     update_merchant_categories as repo_update_merchant_categories,
@@ -38,7 +39,6 @@ from app.data.repositories.payment_repository import (
 )
 from app.data.repositories.payment_repository import upsert_payments
 from app.domain.helpers.aggregation import build_sankey_data, sum_payments_by_category
-from app.domain.helpers.sum import sum_payments_in_range
 from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 create_payment_tables()
@@ -253,6 +253,9 @@ def submit_custom_payment(
         amount = amount / rate
         currency = "CNY"
 
+    if payment_type_enum == PaymentType.EXPENSE and amount > 0:
+        amount = -amount
+
     payment = Payment(
         date=date,
         amount=amount,
@@ -331,13 +334,16 @@ def get_sums_for_ranges_service(
     db: Session,
     user_id: int,
     currency: str | None = None,
+    days: int | None = None,
 ) -> Dict[str, float]:
-    payments, _ = get_all_payments(db, user_id, currency)
     result = {}
     for name, range_dict in ranges.items():
         start = range_dict.get("start")
         end = range_dict.get("end")
-        result[name] = sum_payments_in_range(payments, start, end)
+        range_days = range_dict.get("days", days)
+        result[name] = sum_payments_in_db_range(
+            db, user_id, start, end, currency=currency, days=range_days
+        )
     return result
 
 
