@@ -55,7 +55,7 @@ class AggregateRequest(BaseModel):
 
 
 class SumsRequest(RootModel):
-    root: Dict[str, Dict[str, Optional[datetime]]] = Field(
+    root: Dict[str, Dict[str, Optional[Any]]] = Field(
         ..., description="Mapping from name to {start, end, days}"
     )
 

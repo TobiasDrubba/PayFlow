@@ -28,6 +28,8 @@ Finally, start the frontend.
 cd frontend
 npm start
 ```
+## Inspect Database
+docker exec -it payflow-postgres psql -U {user} -d {db}
 
 # Production
 ## Build for production (optional)

@@ -24,19 +24,10 @@ export default function SummaryCards({
   onAggregate,
   past7DaysSum,
   past30DaysSum,
-  newestPaymentDate,
 }) {
   // Get currency from localStorage, default to CNY
   const currency = (typeof window !== "undefined" && localStorage.getItem("currency")) || "CNY";
 
-  // Use newest payment date as reference for time frames
-  const referenceDate = newestPaymentDate ? new Date(newestPaymentDate) : new Date();
-
-  // Calculate date ranges for cards based on newest payment date
-  const past7Start = new Date(referenceDate.getTime() - 6 * 24 * 60 * 60 * 1000);
-  const past7End = referenceDate;
-  const past30Start = new Date(referenceDate.getTime() - 29 * 24 * 60 * 60 * 1000);
-  const past30End = referenceDate;
 
   // Handler for card click, triggers aggregation
   const handleCardClick = ({ type, start, end }) => {
@@ -51,7 +42,6 @@ export default function SummaryCards({
       key: "total",
       label: "Total Sum",
       sum: totalSum,
-      caption: "All time",
       gradient: "linear-gradient(135deg, #111827, #1f2937)",
       onClick: () => handleCardClick({ type: "total", start: null, end: null }),
     },
@@ -59,17 +49,15 @@ export default function SummaryCards({
       key: "past7",
       label: "Past 7 Days",
       sum: past7DaysSum,
-      caption: `${format(past7Start, "MMM d")} – ${format(past7End, "MMM d, yyyy")}`,
       gradient: "linear-gradient(135deg, #be185d, #f472b6)",
-      onClick: () => handleCardClick({ type: "past7", start: past7Start, end: past7End }),
+      onClick: () => handleCardClick({ type: "past7", start: null, end: null, days: 7 }),
     },
     {
       key: "past30",
       label: "Past 30 Days",
       sum: past30DaysSum,
-      caption: `${format(past30Start, "MMM d")} – ${format(past30End, "MMM d, yyyy")}`,
       gradient: "linear-gradient(135deg, #f59e42, #fbbf24)",
-      onClick: () => handleCardClick({ type: "past30", start: past30Start, end: past30End }),
+      onClick: () => handleCardClick({ type: "past30", start: null, end: null, days: 30 }),
     },
   ];
 

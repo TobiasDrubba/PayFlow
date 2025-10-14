@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState } from "react";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
@@ -102,17 +102,8 @@ export default function PaymentsTable() {
   // Confirm dialog state for delete
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
-  // Find newest payment date for summary cards reference
-  const newestPaymentDate = React.useMemo(() => {
-    if (!payments.length) return null;
-    return payments.reduce((latest, p) => {
-      const d = new Date(p.date);
-      return (!latest || d > latest) ? d : latest;
-    }, null);
-  }, [payments]);
-
   // Handler for summary card aggregation
-  const handleSummaryCardAggregate = async ({ type, start, end }) => {
+  const handleSummaryCardAggregate = async ({ type, start, end, days }) => {
     let title = "";
     if (type === "total") {
       title = "Total Aggregation";
@@ -129,9 +120,13 @@ export default function PaymentsTable() {
     setAggregationOpen(true);
     setAggregationError("");
     try {
-      const params = {};
-      if (start) params.start_date = start.toISOString();
-      if (end) params.end_date = end.toISOString();
+      let params = {};
+      if (type === "past7" || type === "past30") {
+        params.days = days;
+      } else if (type === "custom") {
+        params.start_date = start.toISOString();
+        params.end_date = end.toISOString();
+      }
       const data = await fetchAggregation(params);
       setAggregationData(data);
     } catch (err) {
@@ -163,10 +158,8 @@ export default function PaymentsTable() {
 
   // When payments are loaded for the first time, trigger summary refresh
   React.useEffect(() => {
-    if (payments.length > 0 && summaryRefreshKey === 0) {
       setSummaryRefreshKey(1);
-    }
-  }, [payments, summaryRefreshKey]);
+  }, [summaryRefreshKey]);
 
   // Only refetch summary cards when summaryRefreshKey or dateRange changes
   React.useEffect(() => {
@@ -175,11 +168,6 @@ export default function PaymentsTable() {
       return;
     }
     setSummaryLoading(true);
-    // Use newest payment date as reference for summary cards (except total/custom)
-    const newest = payments.reduce((latest, p) => {
-      const d = new Date(p.date);
-      return (!latest || d > latest) ? d : latest;
-    }, null);
 
     const toNaiveISOString = (d) => d ? d.toISOString().slice(0, 19) : null;
 
@@ -201,17 +189,16 @@ export default function PaymentsTable() {
     }
 
     // Use newest payment date as "now" for relative ranges
-    const nowDate = newest;
     const ranges = {
       total: { start: null, end: null },
-      past7: { start: toNaiveISOString(new Date(nowDate.getTime() - 6 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
-      past30: { start: toNaiveISOString(new Date(nowDate.getTime() - 29 * 24 * 60 * 60 * 1000)), end: toNaiveISOString(nowDate) },
+      past7: { days: 7 },
+      past30: { days: 30 },
     };
     fetchSumsForRanges(ranges)
       .then(setSummarySums)
       .catch(() => {})
       .finally(() => setSummaryLoading(false));
-  }, [summaryRefreshKey, dateRange]);
+  }, [summaryRefreshKey, dateRange, payments]);
 
   // Handle row selection
   const handleRowClick = (payment, event) => {
@@ -404,7 +391,7 @@ export default function PaymentsTable() {
             </div>
           ) : (
             // Only render SummaryCards if not loading and payments exist
-            summarySums.total != -1 && (
+            summarySums.total !== -1 && (
               <SummaryCards
                 totalSum={summarySums.total}
                 customSum={summarySums.custom}
@@ -412,7 +399,6 @@ export default function PaymentsTable() {
                 onAggregate={handleSummaryCardAggregate}
                 past7DaysSum={summarySums.past7}
                 past30DaysSum={summarySums.past30}
-                newestPaymentDate={newestPaymentDate}
               />
             )
           )}
