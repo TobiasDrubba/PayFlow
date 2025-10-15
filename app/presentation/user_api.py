@@ -44,7 +44,10 @@ def register_user_endpoint(req: UserCreateRequest):
 @router.post("/token")
 def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     db = SessionLocal()
-    user = authenticate_user(db, form_data.username, form_data.password)
+    try:
+        user = authenticate_user(db, form_data.username, form_data.password)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail="Invalid Username: " + str(e))
     db.close()
     if not user:
         raise HTTPException(

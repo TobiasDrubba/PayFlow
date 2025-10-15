@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime, timedelta
 
 from fastapi import Depends, HTTPException, status
@@ -36,7 +37,17 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
+def validate_and_normalize_username(username: str) -> str:
+    username = username.lower()
+    if len(username) >= 16:
+        raise ValueError("Username must be less than 16 characters")
+    if not re.fullmatch(r"[a-z0-9\-]+", username):
+        raise ValueError("Username must only contain letters, numbers, and '-'")
+    return username
+
+
 def authenticate_user(db: Session, username: str, password: str):
+    username = validate_and_normalize_username(username)
     user = get_user_by_username(db, username)
     if not user or not verify_password(password, user.hashed_password):
         return None
@@ -63,7 +74,8 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
-    except JWTError:
+        username = validate_and_normalize_username(username)
+    except (JWTError, ValueError):
         raise credentials_exception
     db = SessionLocal()
     user = get_user_by_username(db, username)
@@ -79,6 +91,7 @@ def delete_user_account(db: Session, user_id: int):
 
 
 def change_username(db: Session, user_id: int, new_username: str):
+    new_username = validate_and_normalize_username(new_username)
     if get_user_by_username(db, new_username):
         raise ValueError("Username already taken")
     return update_username(db, user_id, new_username)
@@ -92,6 +105,7 @@ def change_password(db: Session, user_id: int, new_password: str):
 
 
 def register_user(db: Session, username: str, password: str):
+    username = validate_and_normalize_username(username)
     if len(password) < 8:
         raise ValueError("Password must be at least 8 characters long")
     if get_user_by_username(db, username):
