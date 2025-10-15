@@ -1,3 +1,6 @@
+import os
+
+import requests
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -19,6 +22,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 class UserCreateRequest(BaseModel):
     username: str
     password: str
+    hcaptcha_token: str
 
 
 class ChangeUsernameRequest(BaseModel):
@@ -29,8 +33,23 @@ class ChangePasswordRequest(BaseModel):
     new_password: str
 
 
+def verify_hcaptcha(token: str) -> bool:
+    secret = os.getenv("HCAPTCHA_SECRET")
+    if not secret:
+        raise RuntimeError("HCAPTCHA_SECRET environment variable is not set")
+    resp = requests.post(
+        "https://hcaptcha.com/siteverify",
+        data={"secret": secret, "response": token},
+        timeout=5,
+    )
+    data = resp.json()
+    return data.get("success", False)
+
+
 @router.post("/register")
 def register_user_endpoint(req: UserCreateRequest):
+    if not verify_hcaptcha(req.hcaptcha_token):
+        raise HTTPException(status_code=400, detail="hCaptcha verification failed")
     db = SessionLocal()
     try:
         user = register_user(db, req.username, req.password)

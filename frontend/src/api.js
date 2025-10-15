@@ -186,17 +186,17 @@ export async function loginUser(username, password) {
   return data;
 }
 
-export async function registerUser(username, password) {
-  const response = await fetch(`${API_URL}/auth/register`, {
+export async function registerUser(username, password, hcaptchaToken) {
+  const res = await fetch(`${API_URL}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, hcaptcha_token: hcaptchaToken }),
   });
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.detail || "Registration failed");
+  if (!res.ok) {
+    const data = await res.json();
+    throw new Error(data.detail || "Registration failed");
   }
-  return response.json();
+  return await res.json();
 }
 
 export async function deleteUserAccount() {

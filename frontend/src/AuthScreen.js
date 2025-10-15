@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import "./Auth.css";
 import { loginUser, registerUser } from "./api";
+import HCaptcha from "@hcaptcha/react-hcaptcha";
 
 export default function AuthScreen({ onAuth }) {
   const [mode, setMode] = useState("login"); // "login" or "register"
@@ -8,6 +9,12 @@ export default function AuthScreen({ onAuth }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [hcaptchaToken, setHcaptchaToken] = useState("");
+  const hcaptchaRef = useRef();
+  const SITE_KEY = process.env.REACT_APP_HCAPTCHA_SITE_KEY;
+    if (!SITE_KEY) {
+        console.error("REACT_APP_HCAPTCHA_SITE_KEY is not set in environment variables.");
+    }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,9 +25,16 @@ export default function AuthScreen({ onAuth }) {
         await loginUser(username, password);
         onAuth && onAuth();
       } else {
-        await registerUser(username, password);
+        if (!hcaptchaToken) {
+          setError("Please complete the hCaptcha.");
+          setLoading(false);
+          return;
+        }
+        await registerUser(username, password, hcaptchaToken);
         setMode("login");
         setError("Registration successful! Please log in.");
+        setHcaptchaToken("");
+        if (hcaptchaRef.current) hcaptchaRef.current.resetCaptcha();
       }
     } catch (e) {
       setError(e.message);
@@ -60,6 +74,15 @@ export default function AuthScreen({ onAuth }) {
           disabled={loading}
           required
         />
+        {mode === "register" && (
+          <div style={{ margin: "16px 0" }}>
+            <HCaptcha
+              sitekey={SITE_KEY}
+              onVerify={token => setHcaptchaToken(token)}
+              ref={hcaptchaRef}
+            />
+          </div>
+        )}
         <button className="auth-btn" type="submit" disabled={loading}>
           {loading
             ? (mode === "login" ? "Signing in..." : "Registering...")
@@ -82,4 +105,3 @@ export default function AuthScreen({ onAuth }) {
     </div>
   );
 }
-
