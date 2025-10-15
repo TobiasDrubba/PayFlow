@@ -483,3 +483,19 @@ def sum_payments_by_category_db(
         "invalid categories": sorted(list(invalid_categories_set)),
     }
     return output, metadata
+
+
+def update_payments_category_bulk(
+    db, user_id: int, categories: list, new_category: str
+) -> int:
+    """
+    Bulk update payments for a user, set to new_category.
+    Returns number of updated rows.
+    """
+    updated = (
+        db.query(PaymentORM)
+        .filter(PaymentORM.user_id == user_id, PaymentORM.category.in_(categories))
+        .update({"category": new_category}, synchronize_session=False)
+    )
+    db.commit()
+    return updated

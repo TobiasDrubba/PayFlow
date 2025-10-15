@@ -18,6 +18,9 @@ from app.data.repositories.currency_repository import (
     upsert_rates_from_api,
 )
 from app.data.repositories.payment_repository import (
+    update_payments_category_bulk,  # <-- add this import
+)
+from app.data.repositories.payment_repository import (
     add_payment,
     all_merchant_same_category_db,
     create_payment_tables,
@@ -64,12 +67,9 @@ def update_category_tree(new_tree: Dict[str, Any], db: Session, user_id: int) ->
     old_child_categories = set(get_all_child_categories(old_tree))
     new_child_categories = set(get_all_child_categories(new_tree))
     deleted_categories = old_child_categories - new_child_categories
-    payments, _ = get_all_payments(db, user_id)
-    for p in payments:
-        if p.category in deleted_categories:
-            if p.id is None:
-                raise ValueError(f"Payment with id {p.id} not found")
-            update_payment_category(p.id, "", db, user_id)
+    if deleted_categories:
+        # Efficient bulk update in DB layer for deleted categories
+        update_payments_category_bulk(db, user_id, list(deleted_categories), "")
     save_category_tree(db, user_id, new_tree)
 
 
@@ -147,7 +147,8 @@ def list_payments(
 
 
 def get_payments_csv_stream(db: Session, user_id: int, currency: str | None = None):
-    payments, _ = get_all_payments(db, user_id, currency)
+    # Fetch all payments without pagination
+    payments, _ = get_all_payments(db, user_id, currency, page=1, page_size=10**6)
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(

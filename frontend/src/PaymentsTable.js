@@ -163,7 +163,7 @@ export default function PaymentsTable() {
 
   // Only refetch summary cards when summaryRefreshKey or dateRange changes
   React.useEffect(() => {
-    if (!payments.length || summaryRefreshKey === 0) {
+    if (summaryRefreshKey === 0) {
       setSummaryLoading(false);
       return;
     }
@@ -198,7 +198,7 @@ export default function PaymentsTable() {
       .then(setSummarySums)
       .catch(() => {})
       .finally(() => setSummaryLoading(false));
-  }, [summaryRefreshKey, dateRange, payments]);
+  }, [summaryRefreshKey, dateRange]);
 
   // Handle row selection
   const handleRowClick = (payment, event) => {
