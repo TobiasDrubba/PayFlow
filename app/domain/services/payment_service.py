@@ -4,11 +4,12 @@ import os
 import shutil
 import tempfile
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
 import requests
 from fastapi.responses import StreamingResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.data.repositories.currency_repository import (
@@ -21,6 +22,7 @@ from app.data.repositories.payment_repository import (
     update_payments_category_bulk,  # <-- add this import
 )
 from app.data.repositories.payment_repository import (
+    PaymentORM,
     add_payment,
     all_merchant_same_category_db,
     create_payment_tables,
@@ -343,15 +345,50 @@ def get_sums_for_ranges_service(
     user_id: int,
     currency: str | None = None,
     days: int | None = None,
-) -> Dict[str, float]:
+) -> Dict[str, dict]:
     result = {}
     for name, range_dict in ranges.items():
         start = range_dict.get("start")
         end = range_dict.get("end")
         range_days = range_dict.get("days", days)
-        result[name] = sum_payments_in_db_range(
-            db, user_id, start, end, currency=currency, days=range_days
+        start_date = start
+        end_date = end
+
+        # If days is set and start/end not provided, calculate date span
+        if range_days and not start and not end:
+            newest_payment = (
+                db.query(func.max(PaymentORM.date))
+                .filter(PaymentORM.user_id == user_id)
+                .scalar()
+            )
+            if newest_payment:
+                end_date = newest_payment
+                start_date = end_date - timedelta(days=range_days - 1)
+
+        # If total (start/end both null), get oldest and newest payment dates
+        if not start and not end and not range_days and name == "total":
+            oldest_payment = (
+                db.query(func.min(PaymentORM.date))
+                .filter(PaymentORM.user_id == user_id)
+                .scalar()
+            )
+            newest_payment = (
+                db.query(func.max(PaymentORM.date))
+                .filter(PaymentORM.user_id == user_id)
+                .scalar()
+            )
+            start_date = oldest_payment
+            end_date = newest_payment
+
+        sum_value = sum_payments_in_db_range(
+            db, user_id, start_date, end_date, currency=currency, days=range_days
         )
+        result[name] = {
+            "sum": sum_value,
+            "start_date": start_date,
+            "end_date": end_date,
+            "days": range_days,
+        }
     return result
 
 

@@ -24,6 +24,9 @@ export default function SummaryCards({
   onAggregate,
   past7DaysSum,
   past30DaysSum,
+  totalRange,
+  past7DaysRange,
+  past30DaysRange,
 }) {
   // Get currency from localStorage, default to CNY
   const currency = (typeof window !== "undefined" && localStorage.getItem("currency")) || "CNY";
@@ -42,6 +45,10 @@ export default function SummaryCards({
       key: "total",
       label: "Total Sum",
       sum: totalSum,
+      caption:
+        totalRange
+          ? `${format(totalRange[0], "MMM d")} – ${format(totalRange[1], "MMM d, yyyy")}`
+          : "",
       gradient: "linear-gradient(135deg, #111827, #1f2937)",
       onClick: () => handleCardClick({ type: "total", start: null, end: null }),
     },
@@ -49,6 +56,10 @@ export default function SummaryCards({
       key: "past7",
       label: "Past 7 Days",
       sum: past7DaysSum,
+      caption:
+        past7DaysRange
+          ? `${format(past7DaysRange[0], "MMM d")} – ${format(past7DaysRange[1], "MMM d, yyyy")}`
+          : "",
       gradient: "linear-gradient(135deg, #be185d, #f472b6)",
       onClick: () => handleCardClick({ type: "past7", start: null, end: null, days: 7 }),
     },
@@ -56,6 +67,10 @@ export default function SummaryCards({
       key: "past30",
       label: "Past 30 Days",
       sum: past30DaysSum,
+      caption:
+        past30DaysRange
+          ? `${format(past30DaysRange[0], "MMM d")} – ${format(past30DaysRange[1], "MMM d, yyyy")}`
+          : "",
       gradient: "linear-gradient(135deg, #f59e42, #fbbf24)",
       onClick: () => handleCardClick({ type: "past30", start: null, end: null, days: 30 }),
     },

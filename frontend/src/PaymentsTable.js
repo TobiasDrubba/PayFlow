@@ -181,7 +181,9 @@ export default function PaymentsTable() {
       fetchSumsForRanges(ranges)
         .then((res) => setSummarySums((prev) => ({
           ...prev,
-          custom: res.custom ?? 0
+          custom: res.custom?.sum ?? 0,
+          customStart: res.custom?.start_date ? new Date(res.custom.start_date) : null,
+          customEnd: res.custom?.end_date ? new Date(res.custom.end_date) : null,
         })))
         .catch(() => {})
         .finally(() => setSummaryLoading(false));
@@ -195,7 +197,18 @@ export default function PaymentsTable() {
       past30: { days: 30 },
     };
     fetchSumsForRanges(ranges)
-      .then(setSummarySums)
+      .then((res) => setSummarySums((prev) => ({
+        ...prev,
+        total: res.total?.sum ?? 0,
+        totalStart: res.total?.start_date ? new Date(res.total.start_date) : null,
+        totalEnd: res.total?.end_date ? new Date(res.total.end_date) : null,
+        past7: res.past7?.sum ?? 0,
+        past30: res.past30?.sum ?? 0,
+        past7Start: res.past7?.start_date ? new Date(res.past7.start_date) : null,
+        past7End: res.past7?.end_date ? new Date(res.past7.end_date) : null,
+        past30Start: res.past30?.start_date ? new Date(res.past30.start_date) : null,
+        past30End: res.past30?.end_date ? new Date(res.past30.end_date) : null,
+      })))
       .catch(() => {})
       .finally(() => setSummaryLoading(false));
   }, [summaryRefreshKey, dateRange]);
@@ -399,6 +412,21 @@ export default function PaymentsTable() {
                 onAggregate={handleSummaryCardAggregate}
                 past7DaysSum={summarySums.past7}
                 past30DaysSum={summarySums.past30}
+                totalRange={
+                  summarySums.totalStart && summarySums.totalEnd
+                    ? [summarySums.totalStart, summarySums.totalEnd]
+                    : null
+                }
+                past7DaysRange={
+                  summarySums.past7Start && summarySums.past7End
+                    ? [summarySums.past7Start, summarySums.past7End]
+                    : null
+                }
+                past30DaysRange={
+                  summarySums.past30Start && summarySums.past30End
+                    ? [summarySums.past30Start, summarySums.past30End]
+                    : null
+                }
               />
             )
           )}
