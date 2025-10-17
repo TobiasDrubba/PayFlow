@@ -379,12 +379,13 @@ def aggregate_payments_sankey_db(
     start_date=None,
     end_date=None,
     currency: str | None = None,
+    days: int | None = None,
 ):
     """
     Efficiently aggregate payments by category using the database layer.
     """
     result, metadata = sum_payments_by_category_db(
-        db, user_id, category_tree, start_date, end_date, currency
+        db, user_id, category_tree, start_date, end_date, currency, days
     )
     sankey_data = build_sankey_data(result, metadata, category_tree)
     return sankey_data

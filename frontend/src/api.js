@@ -102,11 +102,12 @@ export async function updateCategoryTree(tree) {
   return response.json();
 }
 
-export async function fetchAggregation({ start_date, end_date } = {}) {
+export async function fetchAggregation({ start_date, end_date, days } = {}) {
   const currency = getCurrencyParam();
   const body = {};
   if (start_date) body.start_date = start_date;
   if (end_date) body.end_date = end_date;
+  if (days) body.days = days;
   const url = currency
     ? `${API_URL}/payments/aggregate/sankey?currency=${currency}`
     : `${API_URL}/payments/aggregate/sankey`;

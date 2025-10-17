@@ -173,6 +173,7 @@ def update_payment_cust_category(
 class SankeyAggregateRequest(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    days: Optional[int] = None
 
 
 @router.post("/aggregate/sankey")
@@ -190,6 +191,7 @@ def aggregate_payments_sankey_endpoint(
         start_date=req.start_date,
         end_date=req.end_date,
         currency=currency,
+        days=req.days,
     )
     return result
 

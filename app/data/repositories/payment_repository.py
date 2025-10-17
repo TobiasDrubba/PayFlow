@@ -303,6 +303,42 @@ def delete_all_user_data(db, user_id: int):
     db.commit()
 
 
+def build_base_payment_filters(
+    user_id: int,
+    start_date=None,
+    end_date=None,
+    days: int | None = None,
+):
+    """
+    Build SQLAlchemy filter list for payments, supporting days, start_date, end_date.
+    """
+    from app.domain.models.payment import PaymentType
+
+    filters = [PaymentORM.user_id == user_id, PaymentORM.type != PaymentType.ABORT]
+    if days is not None and days > 0:
+        newest_payment = (
+            SessionLocal()
+            .query(func.max(PaymentORM.date))
+            .filter(PaymentORM.user_id == user_id)
+            .scalar()
+        )
+        if newest_payment:
+            start_date_calc = (
+                newest_payment.date()
+                if hasattr(newest_payment, "date")
+                else newest_payment
+            )
+            start_date_calc = start_date_calc - timedelta(days=days - 1)
+            filters.append(PaymentORM.date >= start_date_calc)
+            filters.append(PaymentORM.date <= newest_payment)
+    else:
+        if start_date:
+            filters.append(PaymentORM.date >= start_date)
+        if end_date:
+            filters.append(PaymentORM.date <= end_date)
+    return filters
+
+
 def sum_payments_in_db_range(
     db,
     user_id: int,
@@ -311,28 +347,7 @@ def sum_payments_in_db_range(
     currency: str | None = None,
     days: int | None = None,
 ) -> float:
-    filters = [PaymentORM.user_id == user_id, PaymentORM.type != PaymentType.ABORT]
-    if days is not None and days > 0:
-        newest_payment = (
-            db.query(func.max(PaymentORM.date))
-            .filter(PaymentORM.user_id == user_id)
-            .scalar()
-        )
-        if newest_payment:
-            start_date = (
-                newest_payment.date()
-                if hasattr(newest_payment, "date")
-                else newest_payment
-            )
-            start_date = start_date - timedelta(days=days - 1)
-            filters.append(PaymentORM.date >= start_date)
-            filters.append(PaymentORM.date <= newest_payment)
-    else:
-        if start:
-            filters.append(PaymentORM.date >= start)
-        if end:
-            filters.append(PaymentORM.date <= end)
-
+    filters = build_base_payment_filters(user_id, start, end, days)
     if currency in ("EUR", "USD"):
         if currency == "EUR":
             amount_expr = PaymentORM.amount * CurrencyRatesORM.EURO
@@ -386,12 +401,12 @@ def sum_payments_by_category_db(
     start_date=None,
     end_date=None,
     currency: str | None = None,
+    days: int | None = None,
 ):
     """
     Aggregate payment amounts by category using the database layer.
     Returns: dict {category_name: sum, ...}, metadata
     """
-    from app.domain.models.payment import PaymentType
 
     # Build all leaf categories and their paths
     def collect_paths(tree, path=None, paths=None):
@@ -417,11 +432,7 @@ def sum_payments_by_category_db(
     all_cats = set(cat for path in all_paths for cat in path)
 
     # Build base query
-    filters = [PaymentORM.user_id == user_id, PaymentORM.type != PaymentType.ABORT]
-    if start_date:
-        filters.append(PaymentORM.date >= start_date)
-    if end_date:
-        filters.append(PaymentORM.date <= end_date)
+    filters = build_base_payment_filters(user_id, start_date, end_date, days)
 
     # Currency conversion
     if currency in ("EUR", "USD"):

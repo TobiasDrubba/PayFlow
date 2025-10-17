@@ -91,7 +91,19 @@ export function useCategories(refetchPayments) {
   const CategoryConfirmDialog = () => (
     <ConfirmDialog
       open={confirmCategoryDialog.open}
-      onClose={() => setConfirmCategoryDialog(dialog => ({ ...dialog, open: false }))}
+      onClose={() => {
+        // On cancel, update only the current payment's category
+        if (confirmCategoryDialog.payment && confirmCategoryDialog.newCat && confirmCategoryDialog.setPayments) {
+          updatePaymentCategory(confirmCategoryDialog.payment.id, confirmCategoryDialog.newCat, false).then(() => {
+            confirmCategoryDialog.setPayments(payments =>
+              payments.map(p =>
+                p.id === confirmCategoryDialog.payment.id ? { ...p, cust_category: confirmCategoryDialog.newCat } : p
+              )
+            );
+          });
+        }
+        setConfirmCategoryDialog(dialog => ({ ...dialog, open: false }));
+      }}
       onConfirm={confirmCategoryDialog.onConfirm}
       title="Change All Merchant Categories?"
       description="Change all categories of that merchant's transactions? This action cannot be undone."

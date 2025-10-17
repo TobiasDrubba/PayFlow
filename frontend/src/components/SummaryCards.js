@@ -30,9 +30,9 @@ export default function SummaryCards({
 
 
   // Handler for card click, triggers aggregation
-  const handleCardClick = ({ type, start, end }) => {
+  const handleCardClick = ({ type, start, end, days }) => {
     if (onAggregate) {
-      onAggregate({ type, start, end });
+      onAggregate({ type, start, end, days });
     }
   };
 
