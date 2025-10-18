@@ -74,7 +74,7 @@ export default function PaymentTableRow({
                   {format(new Date(payment.date), "MMM yyyy")}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {format(new Date(payment.date), "EEE")}
+                  {format(new Date(payment.date), "EEE")}, {format(new Date(payment.date), "HH:mm")}
                 </Typography>
               </Box>
             </Stack>
