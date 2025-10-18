@@ -30,6 +30,7 @@ export default function SettingsDialog({
   setManagerOpen,
   dateRange,
   setDateRange,
+  allColumns,
   orderedColumns,
   visibleColumns,
   toggleColumn,
@@ -201,7 +202,7 @@ export default function SettingsDialog({
                   }
                 }}
               >
-                {orderedColumns.map(col => (
+                {allColumns.map(col => (
                   <MenuItem key={col.id} onClick={() => toggleColumn(col.id)}>
                     <Checkbox checked={visibleColumns.has(col.id)} />
                     <ListItemText primary={col.label} />

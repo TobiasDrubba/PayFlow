@@ -66,6 +66,7 @@ export default function PaymentsTable() {
   } = useCategories(refetchPayments);
 
   const {
+    allColumns,
     orderedColumns,
     visibleColumns,
     toggleColumn,
@@ -352,6 +353,7 @@ export default function PaymentsTable() {
         setManagerOpen={setManagerOpen}
         dateRange={dateRange}
         setDateRange={setDateRange}
+        allColumns={allColumns}
         orderedColumns={orderedColumns}
         visibleColumns={visibleColumns}
         toggleColumn={toggleColumn}

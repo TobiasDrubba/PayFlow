@@ -35,10 +35,12 @@ export function useTableColumns() {
     localStorage.setItem("paymentsTable.visibleColumns", JSON.stringify(Array.from(visibleColumns)));
   }, [visibleColumns]);
 
-  const orderedColumns = useMemo(
-    () => columnOrder.map(id => allColumns.find(c => c.id === id)).filter(Boolean),
-    [columnOrder, allColumns]
-  );
+  const orderedColumns = useMemo(() => {
+    // Keep saved order, but append any columns that are missing from saved order
+    const ordered = columnOrder.map(id => allColumns.find(c => c.id === id)).filter(Boolean);
+    const missing = allColumns.filter(c => !columnOrder.includes(c.id));
+    return [...ordered, ...missing];
+  }, [columnOrder, allColumns]);
 
   const toggleColumn = (id) => {
     setVisibleColumns(prev => {
@@ -50,6 +52,12 @@ export function useTableColumns() {
         next.add(id);
       }
       return next;
+    });
+
+    // When enabling a column ensure it's present in columnOrder so it can be rendered
+    setColumnOrder(prev => {
+      if (prev.includes(id)) return prev;
+      return [...prev, id];
     });
   };
 
