@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from dotenv import load_dotenv
 from googletrans import Translator
@@ -12,7 +13,6 @@ from app.data.repositories.payment_repository import (
     get_all_payments,
     get_category_tree,
 )
-from app.domain.models.payment import Payment
 
 translator = Translator()
 load_dotenv()
@@ -27,32 +27,6 @@ def load_categories(csv_path: str):
 async def translate_text(text: str) -> str:
     result = await translator.translate(text, src="zh-cn", dest="en")
     return result.text
-
-
-async def classify_payments(payments: list[Payment]):
-    categories = load_categories(CATEGORIES_CSV_PATH)
-    classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
-
-    for p in payments:
-        if not p.category:
-            t_m = await translate_text(p.merchant)
-            t_n = await translate_text(p.note)
-            input_text = f"{t_m} {t_n}"
-            result = classifier(input_text, candidate_labels=categories)
-            top_label = result["labels"][0]
-            top_score = result["scores"][0]
-            if top_score > 0.4:
-                p.category = top_label
-                print(
-                    f"1     Payment {t_m}-{t_n}: classified as "
-                    f"'{top_label}' ({round(top_score * 100)}%)"
-                )
-            else:
-                print(
-                    f"Payment {t_m}-{t_n}: no confident category found "
-                    f"(top: {top_label}, {round(top_score * 100)}%)"
-                )
-    return payments
 
 
 async def classify_payments_from_db(db: Session, user_id: int):
@@ -74,49 +48,65 @@ async def classify_payments_from_db(db: Session, user_id: int):
     not_classified = 0
     not_classified_string = ""
 
-    for p in payments:
-        if p.category not in [
+    # Start all translation tasks up front
+    translation_tasks = {
+        p.id: asyncio.create_task(translate_text(p.merchant + " " + p.note))
+        for p in payments
+        if p.category
+        not in [
             "Canteen Breakfast",
             "Canteen Lunch",
             "Canteen Dinner",
             "Card Recharge",
             "",
-        ]:
-            t_m = await translate_text(p.merchant)
-            t_n = await translate_text(p.note)
-            input_text = f"{t_m} {t_n}"
-            result = classifier(input_text, candidate_labels=categories)
-            top_label = result["labels"][0]
-            top_score = result["scores"][0]
-            if p.category != "" and top_score >= 0.3:
-                total_classified += 1
-                if top_label == p.category:
-                    correct += 1
-                    print(
-                        f"Payment {t_m}-{t_n}: CORRECT '{top_label}' "
-                        f"({round(top_score * 100)}%)"
-                    )
+        ]
+    }
+
+    pending_payments = [p for p in payments if p.id in translation_tasks]
+    classified_ids = set()
+    while pending_payments:
+        for p in list(pending_payments):
+            task = translation_tasks[p.id]
+            if task.done():
+                t_start_class = time.perf_counter()
+                translated = await task
+                result = classifier(translated, candidate_labels=categories)
+                t_end_class = time.perf_counter()
+                print(f"Classification time: {t_end_class - t_start_class:.3f}s")
+                top_label = result["labels"][0]
+                top_score = result["scores"][0]
+                if p.category != "" and top_score >= 0.3:
+                    total_classified += 1
+                    if top_label == p.category:
+                        correct += 1
+                        print(
+                            f"Payment {translated}: CORRECT '{top_label}' "
+                            f"({round(top_score * 100)}%)"
+                        )
+                    else:
+                        misclassified += 1
+                        print(
+                            f"Payment {translated}: MISCLASSIFIED actual: "
+                            f"'{p.category}', "
+                            f"predicted: '{top_label}' ({round(top_score * 100)}%)"
+                        )
+                    if total_classified % 10 == 0:
+                        accuracy = correct / total_classified * 100
+                        print(
+                            f"\nClassification accuracy so far: {accuracy:.2f}% "
+                            f"({correct}/{total_classified} correct, "
+                            f"{misclassified} misclassified)\n"
+                        )
                 else:
-                    misclassified += 1
-                    print(
-                        f"Payment {t_m}-{t_n}: MISCLASSIFIED actual: '{p.category}', "
-                        f"predicted: '{top_label}' ({round(top_score * 100)}%)"
+                    not_classified += 1
+                    not_classified_string += (
+                        f"Payment {translated}: most likely class is "
+                        f"'{top_label}' ({round(top_score * 100)}%), "
+                        f"actual: '{p.category}' (low confidence)\n"
                     )
-                # Print accuracy every 10 classified payments
-                if total_classified % 10 == 0:
-                    accuracy = correct / total_classified * 100
-                    print(
-                        f"\nClassification accuracy so far: {accuracy:.2f}% "
-                        f"({correct}/{total_classified} correct, "
-                        f"{misclassified} misclassified)\n"
-                    )
-            else:
-                not_classified += 1
-                not_classified_string += (
-                    f"Payment {t_m}-{t_n}: most likely class is "
-                    f"'{top_label}' ({round(top_score * 100)}%), "
-                    f"actual: '{p.category}' (low confidence)\n"
-                )
+                classified_ids.add(p.id)
+                pending_payments.remove(p)
+        await asyncio.sleep(0.05)
 
     print(not_classified_string)
     if total_classified > 0:
