@@ -27,17 +27,17 @@ export function usePayments({ page = 1, pageSize = 50, search = "", sort = { fie
       });
       setPayments(res.payments);
       setTotal(res.total);
-      setLoading(false);
     } catch (e) {
       setError(e.message || "Failed to fetch payments");
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    refetchPayments({ page: currentPage, search: currentSearch });
+    refetchPayments();
     // eslint-disable-next-line
-  }, [currentPage, currentSearch, pageSize, currentSort]);
+  }, [currentPage, currentSearch, pageSize]);
 
   const setSort = (newSort) => {
     setCurrentSort(newSort);

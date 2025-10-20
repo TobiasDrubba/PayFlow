@@ -14,11 +14,30 @@ export default function FileUpload({ onSuccess }) {
   const [uploading, setUploading] = useState(false);
   const [successFiles, setSuccessFiles] = useState([]); // [{name, type}]
 
+  const inferFileType = (fileName) => {
+    const lowerName = fileName.toLowerCase();
+    if (lowerName.includes("支付宝") || lowerName.includes("alipay")) {
+      return "Alipay";
+    }
+    if (lowerName.includes("微信") || lowerName.includes("wechat")) {
+      return "WeChat";
+    }
+    if (lowerName.includes("tsinghua") || lowerName.includes("card")) {
+      return "Tsinghua Card";
+    }
+    return ""; // Default to empty if no match
+  };
+
   const handleFileChange = (e) => {
     setUploadError("");
     setSuccessFiles([]);
     const files = Array.from(e.target.files).slice(0, 3);
-    setUploadFiles(files.map(file => ({ file, type: "" })));
+    setUploadFiles(
+      files.map((file) => ({
+        file,
+        type: inferFileType(file.name), // Infer type from file name
+      }))
+    );
   };
 
   const handleTypeChange = (idx, type) => {

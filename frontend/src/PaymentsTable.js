@@ -297,13 +297,15 @@ export default function PaymentsTable() {
     });
   };
 
-  React.useEffect(() => {
-    refetchPayments({ sortField: sort.field, sortDirection: sort.direction });
-  }, [sort]);
+const refetchPaymentsRef = React.useRef(refetchPayments);
+React.useEffect(() => {
+  refetchPaymentsRef.current = refetchPayments;
+}, [refetchPayments]);
 
-  React.useEffect(() => {
-    refetchPayments({ page });
-  }, [page]);
+React.useEffect(() => {
+  // use ref to avoid including `refetchPayments` in deps
+  refetchPaymentsRef.current({ page, sortField: sort.field, sortDirection: sort.direction });
+}, [page, sort]);
 
   if (error) {
     return (
