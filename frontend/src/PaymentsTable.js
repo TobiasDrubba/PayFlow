@@ -52,6 +52,8 @@ export default function PaymentsTable() {
     setPage,
     search,
     setSearch,
+    sort,
+    setSort,
     refetchPayments,
   } = usePayments();
 
@@ -287,6 +289,21 @@ export default function PaymentsTable() {
       handleSearchSubmit();
     }
   };
+
+  const handleSort = (field) => {
+    setSort((prev) => {
+      const newDirection = prev.field === field && prev.direction === "asc" ? "desc" : "asc";
+      return { field, direction: newDirection };
+    });
+  };
+
+  React.useEffect(() => {
+    refetchPayments({ sortField: sort.field, sortDirection: sort.direction });
+  }, [sort]);
+
+  React.useEffect(() => {
+    refetchPayments({ page });
+  }, [page]);
 
   if (error) {
     return (
@@ -528,14 +545,16 @@ export default function PaymentsTable() {
                                   {...dragProvided.dragHandleProps}
                                   className={snapshot.isDragging ? 'dragging' : ''}
                                   sx={{
-                                    cursor: snapshot.isDragging ? 'grabbing' : 'grab',
+                                    cursor: snapshot.isDragging ? 'grabbing' : 'pointer',
                                     '&:hover': {
                                       background: 'rgba(102,126,234,0.08)',
                                       color: '#667eea',
                                     }
                                   }}
+                                  onClick={() => handleSort(col.id)}
                                 >
                                   {col.label}
+                                  {sort.field === col.id && (sort.direction === "asc" ? " ↑" : " ↓")}
                                 </TableCell>
                               )}
                             </Draggable>

@@ -5,7 +5,18 @@ from typing import List
 
 from sqlalchemy import Column, Date, DateTime
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import Float, ForeignKey, Integer, String, Text, cast, func, or_
+from sqlalchemy import (
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    asc,
+    cast,
+    desc,
+    func,
+    or_,
+)
 from sqlalchemy.orm import sessionmaker
 
 from app.data.base import Base, engine
@@ -64,6 +75,8 @@ def get_all_payments(
     page: int = 1,
     page_size: int = 50,
     search: str | None = None,
+    sort_field: str = "date",
+    sort_direction: str = "desc",
 ) -> tuple[list[Payment], int]:
     query = db.query(PaymentORM).filter(PaymentORM.user_id == user_id)
     if search:
@@ -80,7 +93,17 @@ def get_all_payments(
             )
         )
     total = query.count()
-    query = query.order_by(PaymentORM.date.desc())
+
+    # Map 'cust_category' to the correct database column
+    if sort_field == "cust_category":
+        sort_column = PaymentORM.category
+    else:
+        sort_column = getattr(PaymentORM, sort_field, PaymentORM.date)
+
+    # Apply sorting
+    sort_order = desc if sort_direction == "desc" else asc
+    query = query.order_by(sort_order(sort_column))
+
     if currency in ("EUR", "USD"):
         query = query.join(
             CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date

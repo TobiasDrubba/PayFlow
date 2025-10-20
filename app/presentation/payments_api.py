@@ -114,9 +114,18 @@ def get_all_payments_endpoint(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     search: Optional[str] = Query(None, description="Search term"),
+    sort_field: str = Query("date", description="Field to sort by"),
+    sort_direction: str = Query("desc", description="Sort direction: 'asc' or 'desc'"),
 ) -> PaginatedPaymentsResponse:
     payments, total = list_payments(
-        db, current_user.id, currency, page=page, page_size=page_size, search=search
+        db,
+        current_user.id,
+        currency,
+        page,
+        page_size,
+        search,
+        sort_field,
+        sort_direction,
     )
     return PaginatedPaymentsResponse(
         payments=[PaymentResponse.from_domain(p) for p in payments],

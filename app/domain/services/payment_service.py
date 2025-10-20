@@ -144,8 +144,12 @@ def list_payments(
     page: int = 1,
     page_size: int = 50,
     search: str | None = None,
+    sort_field: str = "date",
+    sort_direction: str = "desc",
 ) -> tuple[list[Payment], int]:
-    return get_all_payments(db, user_id, currency, page, page_size, search)
+    return get_all_payments(
+        db, user_id, currency, page, page_size, search, sort_field, sort_direction
+    )
 
 
 def get_payments_csv_stream(db: Session, user_id: int, currency: str | None = None):

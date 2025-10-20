@@ -61,13 +61,15 @@ function getCurrencyParam() {
   return null;
 }
 
-export async function fetchPayments({ page = 1, pageSize = 50, search = "" } = {}) {
+export async function fetchPayments({ page = 1, pageSize = 50, search = "", sortField = "date", sortDirection = "desc" } = {}) {
   const currency = getCurrencyParam();
   const params = new URLSearchParams();
   params.append("page", page);
   params.append("page_size", pageSize);
   if (search) params.append("search", search);
   if (currency) params.append("currency", currency);
+  params.append("sort_field", sortField); // Use dynamic sortField
+  params.append("sort_direction", sortDirection); // Use dynamic sortDirection
   const url = `${API_URL}/payments?${params.toString()}`;
   const response = await fetchWithAuth(url);
   return response.json();
