@@ -1,0 +1,130 @@
+.dialog-title {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #1976d2;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px #eee;
+  padding-bottom: 8px;
+}
+
+.category-item {
+  background: #f9f9ff;
+  border-radius: 16px;
+  margin-bottom: 4px; /* reduced spacing */
+  transition: box-shadow 0.2s, background 0.2s, border 0.2s;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  cursor: pointer;
+  position: relative;
+  font-size: 1.15rem;
+  min-height: 40px; /* slightly reduced height */
+  display: flex;
+  align-items: center;
+  border: 2px solid transparent;
+}
+.category-item:hover {
+  background: #e3f2fd;
+  box-shadow: 0 2px 12px rgba(33,150,243,0.10);
+  border: 2px solid #90caf9;
+}
+.category-item.selected,
+.category-item.Mui-selected {
+  background: #bbdefb !important;
+  border: 2px solid #1976d2 !important;
+}
+
+.category-name {
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: #333;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+/* Removed .edit-icon styling */
+
+.category-actions {
+  display: flex;
+  gap: 12px;
+  margin-left: 12px;
+}
+
+.add-root {
+  background: transparent;
+  border-radius: 0;
+  margin-bottom: 0;
+  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.add-item {
+  background: #fffde7;
+  border-radius: 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 4px rgba(255,235,59,0.08);
+  display: flex;
+  align-items: center;
+}
+
+.edit-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Remove bin styles */
+.delete-bin,
+.delete-bin.bin-hover,
+.bin-icon,
+.bin-label {
+  display: none !important;
+}
+
+.confirm-text {
+  font-size: 1.1rem;
+  color: #333;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  background: #e3f2fd;
+}
+::-webkit-scrollbar-thumb {
+  background: #90caf9;
+  border-radius: 8px;
+}
+
+/* Make buttons and text fields bigger and more friendly */
+.MuiButton-root, .MuiTextField-root input {
+  font-size: 1.1rem !important;
+}
+.MuiButton-root {
+  border-radius: 12px !important;
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding: 8px 18px !important;
+}
+
+/* Add fun hover effect for add buttons */
+.MuiButton-containedPrimary:hover, .MuiButton-containedSuccess:hover {
+  background-color: #64b5f6 !important;
+  box-shadow: 0 2px 8px #90caf9;
+}
+
+/* Animate collapse/expand icons */
+.MuiIconButton-root {
+  transition: transform 0.2s;
+}
+.MuiIconButton-root:active {
+  transform: scale(1.2);
+}
+
+.right-click-hint {
+  color: #888;
+  font-size: 1rem;
+  margin-left: 16px;
+  user-select: none;
+  font-style: italic;
+  letter-spacing: 0.2px;
+}
