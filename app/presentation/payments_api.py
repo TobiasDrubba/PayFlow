@@ -214,9 +214,13 @@ def get_sums_for_ranges(
     days: Optional[int] = Query(
         None, description="Sum payments within X days before newest payment"
     ),
+    months: Optional[int] = Query(
+        None,
+        description="Sum payments for the Xth previous month (0=current, 1=past, ...)",
+    ),
 ):
     return get_sums_for_ranges_service(
-        req.root, db, current_user.id, currency, days=days
+        req.root, db, current_user.id, currency, days=days, months=months
     )
 
 

@@ -24,7 +24,7 @@ import {
   Pagination,
 } from "@mui/material";
 import { Search as SearchIcon, Upload as UploadIcon, Settings as SettingsIcon, Close as CloseIcon } from "@mui/icons-material";
-import { fetchAggregation, fetchSumsForRanges, deletePayments } from "./api";
+import { fetchAggregation, deletePayments } from "./api";
 import "./PaymentsTable.css";
 
 // Custom hooks
@@ -74,15 +74,6 @@ export default function PaymentsTable() {
     toggleColumn,
     onDragEnd
   } = useTableColumns();
-
-  const [summarySums, setSummarySums] = useState({
-    total: -1,
-    month: 0,
-    past7: 0,
-    past30: 0,
-    past90: 0,
-    custom: 0,
-  });
 
   // Dialog states
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -148,73 +139,13 @@ export default function PaymentsTable() {
   // Add missing state for dateRange
   const [dateRange, setDateRange] = useState([null, null]);
 
+  // Add summary refresh key state
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
+
   // Add missing handler for category change dialog
   const handleCategoryChangeWithDialog = (payment, value) => {
     handleCategoryChange(payment, value, payments, setPayments);
   };
-
-  // Add a loading state for summary cards
-  const [summaryLoading, setSummaryLoading] = useState(true);
-
-  // Add a key to trigger summary refresh
-  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0); // start at 0
-
-  // When payments are loaded for the first time, trigger summary refresh
-  React.useEffect(() => {
-      setSummaryRefreshKey(1);
-  }, [summaryRefreshKey]);
-
-  // Only refetch summary cards when summaryRefreshKey or dateRange changes
-  React.useEffect(() => {
-    if (summaryRefreshKey === 0) {
-      setSummaryLoading(false);
-      return;
-    }
-    setSummaryLoading(true);
-
-    const toNaiveISOString = (d) => d ? d.toISOString().slice(0, 19) : null;
-
-    if (dateRange[0] && dateRange[1]) {
-      const ranges = {
-        custom: {
-          start: toNaiveISOString(dateRange[0]),
-          end: toNaiveISOString(dateRange[1]),
-        }
-      };
-      fetchSumsForRanges(ranges)
-        .then((res) => setSummarySums((prev) => ({
-          ...prev,
-          custom: res.custom?.sum ?? 0,
-          customStart: res.custom?.start_date ? new Date(res.custom.start_date) : null,
-          customEnd: res.custom?.end_date ? new Date(res.custom.end_date) : null,
-        })))
-        .catch(() => {})
-        .finally(() => setSummaryLoading(false));
-      return;
-    }
-
-    // Use newest payment date as "now" for relative ranges
-    const ranges = {
-      total: { start: null, end: null },
-      past7: { days: 7 },
-      past30: { days: 30 },
-    };
-    fetchSumsForRanges(ranges)
-      .then((res) => setSummarySums((prev) => ({
-        ...prev,
-        total: res.total?.sum ?? 0,
-        totalStart: res.total?.start_date ? new Date(res.total.start_date) : null,
-        totalEnd: res.total?.end_date ? new Date(res.total.end_date) : null,
-        past7: res.past7?.sum ?? 0,
-        past30: res.past30?.sum ?? 0,
-        past7Start: res.past7?.start_date ? new Date(res.past7.start_date) : null,
-        past7End: res.past7?.end_date ? new Date(res.past7.end_date) : null,
-        past30Start: res.past30?.start_date ? new Date(res.past30.start_date) : null,
-        past30End: res.past30?.end_date ? new Date(res.past30.end_date) : null,
-      })))
-      .catch(() => {})
-      .finally(() => setSummaryLoading(false));
-  }, [summaryRefreshKey, dateRange]);
 
   // Handle row selection
   const handleRowClick = (payment, event) => {
@@ -414,43 +345,13 @@ React.useEffect(() => {
 
         {/* Summary Cards */}
         <Box sx={{ position: "relative", minHeight: "120px" }}>
-          {summaryLoading ? (
-            <div className="loading-container" style={{ height: "120px", marginBottom: 24 }}>
-              <div className="loading-spinner">
-                <CircularProgress size={48} thickness={3.5} sx={{ color: '#667eea' }} />
-              </div>
-              <Typography className="loading-text">
-                Loading summary cards…
-              </Typography>
-            </div>
-          ) : (
-            // Only render SummaryCards if not loading and payments exist
-            summarySums.total !== -1 && (
-              <SummaryCards
-                totalSum={summarySums.total}
-                customSum={summarySums.custom}
-                dateRange={dateRange}
-                onAggregate={handleSummaryCardAggregate}
-                past7DaysSum={summarySums.past7}
-                past30DaysSum={summarySums.past30}
-                totalRange={
-                  summarySums.totalStart && summarySums.totalEnd
-                    ? [summarySums.totalStart, summarySums.totalEnd]
-                    : null
-                }
-                past7DaysRange={
-                  summarySums.past7Start && summarySums.past7End
-                    ? [summarySums.past7Start, summarySums.past7End]
-                    : null
-                }
-                past30DaysRange={
-                  summarySums.past30Start && summarySums.past30End
-                    ? [summarySums.past30Start, summarySums.past30End]
-                    : null
-                }
-              />
-            )
-          )}
+          <SummaryCards
+            dateRange={dateRange}
+            setDateRange={setDateRange}
+            onAggregate={handleSummaryCardAggregate}
+            summaryRefreshKey={summaryRefreshKey}
+            setSummaryRefreshKey={setSummaryRefreshKey}
+          />
         </Box>
 
         {/* Search Bar and Upload Button */}

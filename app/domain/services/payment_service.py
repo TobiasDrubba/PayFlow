@@ -3,7 +3,6 @@ import io
 import os
 import shutil
 import tempfile
-import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
@@ -45,7 +44,7 @@ from app.data.repositories.payment_repository import (
     update_payment_category as repo_update_payment_category,
 )
 from app.data.repositories.payment_repository import upsert_payments
-from app.domain.helpers.aggregation import build_sankey_data, sum_payments_by_category
+from app.domain.helpers.aggregation import build_sankey_data
 from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 create_payment_tables()
@@ -349,17 +348,46 @@ def get_sums_for_ranges_service(
     user_id: int,
     currency: str | None = None,
     days: int | None = None,
+    months: int | None = None,
 ) -> Dict[str, dict]:
     result = {}
     for name, range_dict in ranges.items():
         start = range_dict.get("start")
         end = range_dict.get("end")
         range_days = range_dict.get("days", days)
+        range_months = range_dict.get("months", months)
         start_date = start
         end_date = end
 
+        # Calculate date span based on newest payment
+        if range_months is not None and not start and not end:
+            newest_payment = (
+                db.query(func.max(PaymentORM.date))
+                .filter(PaymentORM.user_id == user_id)
+                .scalar()
+            )
+            if newest_payment:
+                year = newest_payment.year
+                month = newest_payment.month - range_months
+                while month <= 0:
+                    year -= 1
+                    month += 12
+                from calendar import monthrange
+
+                first_day = datetime(year, month, 1)
+                if range_months == 0:
+                    # For current month, end_date is the newest payment's date
+                    start_date = first_day
+                    end_date = newest_payment
+                else:
+                    # For past months, end_date is the last day of that month
+                    last_day = datetime(
+                        year, month, monthrange(year, month)[1], 23, 59, 59, 999999
+                    )
+                    start_date = first_day
+                    end_date = last_day
         # If days is set and start/end not provided, calculate date span
-        if range_days and not start and not end:
+        elif range_days and not start and not end:
             newest_payment = (
                 db.query(func.max(PaymentORM.date))
                 .filter(PaymentORM.user_id == user_id)
@@ -370,7 +398,13 @@ def get_sums_for_ranges_service(
                 start_date = end_date - timedelta(days=range_days - 1)
 
         # If total (start/end both null), get oldest and newest payment dates
-        if not start and not end and not range_days and name == "total":
+        if (
+            not start
+            and not end
+            and not range_days
+            and not range_months
+            and name == "total"
+        ):
             oldest_payment = (
                 db.query(func.min(PaymentORM.date))
                 .filter(PaymentORM.user_id == user_id)
@@ -392,25 +426,13 @@ def get_sums_for_ranges_service(
             "start_date": start_date,
             "end_date": end_date,
             "days": range_days,
+            "months": range_months,
         }
     return result
 
 
 def list_categories(db: Session, user_id: int) -> List[str]:
     return child_categories(db, user_id)
-
-
-def aggregate_payments_sankey(
-    payments: List[Payment], category_tree: dict, start_date=None, end_date=None
-):
-    start_time = time.time()
-    result, metadata = sum_payments_by_category(
-        payments, category_tree, start_date, end_date
-    )
-    elapsed_ms = (time.time() - start_time) * 1000
-    print(f"sum_payments_by_category took {elapsed_ms:.2f} ms")
-    sankey_data = build_sankey_data(result, metadata, category_tree)
-    return sankey_data
 
 
 def aggregate_payments_sankey_db(
