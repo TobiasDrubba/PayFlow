@@ -52,11 +52,12 @@ export default function ChangePasswordDialog({ open, onClose }) {
         {error && <Typography color="error">{error}</Typography>}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button onClick={onClose} disabled={loading} className="btn-cancel">Cancel</Button>
         <Button
           onClick={handleChange}
           disabled={loading || password.length < 8}
           variant="contained"
+          className="btn-save"
         >
           Change Password
         </Button>
@@ -64,4 +65,3 @@ export default function ChangePasswordDialog({ open, onClose }) {
     </Dialog>
   );
 }
-

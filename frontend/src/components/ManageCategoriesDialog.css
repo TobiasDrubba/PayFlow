@@ -1,46 +1,45 @@
 .dialog-title {
   font-size: 2rem;
   font-weight: bold;
-  color: #1976d2;
+  color: #667eea; /* Use palette color */
   letter-spacing: 1px;
   text-shadow: 1px 1px 2px #eee;
   padding-bottom: 8px;
 }
 
 .category-item {
-  background: #f9f9ff;
-  border-radius: 16px;
-  margin-bottom: 4px; /* reduced spacing */
-  transition: box-shadow 0.2s, background 0.2s, border 0.2s;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+  background: linear-gradient(135deg, rgba(102,126,234,0.04), rgba(118,75,162,0.04));
+  border-radius: var(--border-radius-lg);
+  margin-bottom: 4px;
+  transition: box-shadow var(--transition-fast), background var(--transition-fast), border var(--transition-fast);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
   position: relative;
   font-size: 1.15rem;
-  min-height: 40px; /* slightly reduced height */
+  min-height: 40px;
   display: flex;
   align-items: center;
   border: 2px solid transparent;
 }
 .category-item:hover {
-  background: #e3f2fd;
-  box-shadow: 0 2px 12px rgba(33,150,243,0.10);
-  border: 2px solid #90caf9;
+  background: linear-gradient(135deg, rgba(102,126,234,0.12), rgba(118,75,162,0.12));
+  box-shadow: var(--shadow-md);
+  border: 2px solid #667eea;
 }
 .category-item.selected,
 .category-item.Mui-selected {
-  background: #bbdefb !important;
-  border: 2px solid #1976d2 !important;
+  background: linear-gradient(135deg, rgba(102,126,234,0.18), rgba(118,75,162,0.18)) !important;
+  border: 2px solid #667eea !important;
 }
 
 .category-name {
   font-size: 1.15rem;
   font-weight: 500;
-  color: #333;
+  color: #1a1a1a;
   display: flex;
   align-items: center;
   gap: 8px;
 }
-/* Removed .edit-icon styling */
 
 .category-actions {
   display: flex;
@@ -59,10 +58,10 @@
 }
 
 .add-item {
-  background: #fffde7;
-  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(240,147,251,0.08), rgba(245,87,108,0.08));
+  border-radius: var(--border-radius-lg);
   margin-bottom: 10px;
-  box-shadow: 0 1px 4px rgba(255,235,59,0.08);
+  box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
 }
@@ -73,58 +72,76 @@
   gap: 10px;
 }
 
-/* Remove bin styles */
-.delete-bin,
-.delete-bin.bin-hover,
-.bin-icon,
-.bin-label {
-  display: none !important;
-}
-
 .confirm-text {
   font-size: 1.1rem;
-  color: #333;
+  color: #1a1a1a;
 }
 
 ::-webkit-scrollbar {
   width: 10px;
-  background: #e3f2fd;
+  background: rgba(102,126,234,0.08);
 }
 ::-webkit-scrollbar-thumb {
-  background: #90caf9;
+  background: #667eea;
   border-radius: 8px;
 }
 
-/* Make buttons and text fields bigger and more friendly */
 .MuiButton-root, .MuiTextField-root input {
   font-size: 1.1rem !important;
 }
 .MuiButton-root {
-  border-radius: 12px !important;
+  border-radius: var(--border-radius-md) !important;
   min-width: 44px !important;
   min-height: 44px !important;
   padding: 8px 18px !important;
+  background: var(--primary-gradient) !important;
+  color: white !important;
+  box-shadow: var(--shadow-sm) !important;
+  border: none !important;
 }
 
-/* Add fun hover effect for add buttons */
 .MuiButton-containedPrimary:hover, .MuiButton-containedSuccess:hover {
-  background-color: #64b5f6 !important;
-  box-shadow: 0 2px 8px #90caf9;
+  background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%) !important;
+  box-shadow: var(--shadow-md) !important;
 }
 
-/* Animate collapse/expand icons */
 .MuiIconButton-root {
-  transition: transform 0.2s;
+  transition: transform var(--transition-fast);
+  color: #667eea;
 }
 .MuiIconButton-root:active {
   transform: scale(1.2);
 }
 
 .right-click-hint {
-  color: #888;
+  color: rgba(0,0,0,0.4);
   font-size: 1rem;
   margin-left: 16px;
   user-select: none;
   font-style: italic;
   letter-spacing: 0.2px;
+}
+
+.MuiButton-root.btn-cancel,
+.btn-cancel {
+  background: var(--btn-cancel-bg) !important;
+  color: var(--btn-cancel-color) !important;
+  border: 1px solid #e5e7eb !important;
+}
+.MuiButton-root.btn-cancel:hover,
+.btn-cancel:hover {
+  background: var(--btn-cancel-hover-bg) !important;
+  color: var(--btn-cancel-color) !important;
+}
+
+.MuiButton-root.btn-delete,
+.btn-delete {
+  background: var(--btn-delete-bg) !important;
+  color: var(--btn-delete-color) !important;
+  border: none !important;
+}
+.MuiButton-root.btn-delete:hover,
+.btn-delete:hover {
+  background: var(--btn-delete-hover-bg) !important;
+  color: var(--btn-delete-color) !important;
 }

@@ -20,6 +20,12 @@ export default function ConfirmDialog({
   cancelText = "Cancel",
   loading = false,
 }) {
+  // Determine button class based on confirmText
+  let confirmClass = "btn-save";
+  if (confirmText.toLowerCase().includes("delete")) confirmClass = "btn-delete";
+  if (confirmText.toLowerCase().includes("save")) confirmClass = "btn-save";
+  if (confirmText.toLowerCase().includes("cancel")) confirmClass = "btn-cancel";
+
   return (
     <Dialog
       open={open}
@@ -45,14 +51,15 @@ export default function ConfirmDialog({
         </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={onClose} variant="outlined" color="primary" disabled={loading}>
+        <Button onClick={onClose} variant="outlined" color="primary" disabled={loading} className="btn-cancel">
           {cancelText}
         </Button>
         <Button
           onClick={onConfirm}
           variant="contained"
-          color="error"
+          color={confirmClass === "btn-delete" ? "error" : "success"}
           disabled={loading}
+          className={confirmClass}
         >
           {confirmText}
         </Button>
@@ -60,4 +67,3 @@ export default function ConfirmDialog({
     </Dialog>
   );
 }
-

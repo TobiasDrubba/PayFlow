@@ -253,8 +253,8 @@ export default function ManageCategoriesDialog({
                       if (e.key === "Enter") handleEditSave();
                     }}
                   />
-                  <Button onClick={handleEditSave} size="small" variant="contained" color="success">Save</Button>
-                  <Button onClick={() => setEditPath(null)} size="small" color="secondary">Cancel</Button>
+                  <Button onClick={handleEditSave} size="small" variant="contained" color="success" className="btn-save">Save</Button>
+                  <Button onClick={() => setEditPath(null)} size="small" color="secondary" className="btn-cancel">Cancel</Button>
                 </Box>
               </Zoom>
             ) : (
@@ -282,8 +282,8 @@ export default function ManageCategoriesDialog({
                   if (e.key === "Enter") handleAddSave();
                 }}
               />
-              <Button onClick={handleAddSave} size="small" variant="contained" color="primary">Add</Button>
-              <Button onClick={() => setAddPath(null)} size="small" color="secondary">Cancel</Button>
+              <Button onClick={handleAddSave} size="small" variant="contained" color="primary" className="btn-save">Add</Button>
+              <Button onClick={() => setAddPath(null)} size="small" color="secondary" className="btn-cancel">Cancel</Button>
             </ListItem>
           )}
           {hasChildren && (
@@ -356,15 +356,15 @@ export default function ManageCategoriesDialog({
                   >
                     Add
                   </Button>
-                  <Button onClick={() => setAddPath(null)} size="small" color="secondary">Cancel</Button>
+                  <Button onClick={() => setAddPath(null)} size="small" color="secondary" className="btn-cancel">Cancel</Button>
                 </ListItem>
               )}
             </List>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleMainCancel} color="secondary">Cancel</Button>
-          <Button variant="contained" color="success" onClick={handleSave}>
+          <Button onClick={handleMainCancel} color="secondary" className="btn-cancel">Cancel</Button>
+          <Button variant="contained" color="success" onClick={handleSave} className="btn-save">
             Save Changes
           </Button>
         </DialogActions>
@@ -405,8 +405,8 @@ export default function ManageCategoriesDialog({
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelConfirm} color="secondary">Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleConfirm}>
+          <Button onClick={handleCancelConfirm} color="secondary" className="btn-cancel">Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleConfirm} className="btn-delete">
             Yes, update and uncategorize payments
           </Button>
         </DialogActions>

@@ -22,6 +22,14 @@
   --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-base: 250ms cubic-bezier(0.4, 0, 0.2, 1);
   --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  --btn-cancel-bg: #f9fafb;
+  --btn-cancel-hover-bg: #f1f5f9;
+  --btn-cancel-color: #111827;
+
+  --btn-delete-bg: linear-gradient(135deg, #ea6666 0%, #a24b4b 100%);
+  --btn-delete-hover-bg: #d9363e;
+  --btn-delete-color: white;
 }
 
 /* === GLOBAL RESETS & BASE === */
@@ -113,7 +121,9 @@
 .btn-primary,
 .btn-secondary,
 .settings-btn,
-.upload-btn {
+.upload-btn,
+.btn-cancel,
+.btn-delete {
   height: 48px;
   padding: 0 24px;
   border-radius: var(--border-radius-md);
@@ -153,6 +163,27 @@
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
+
+.btn-cancel {
+  background: var(--btn-cancel-bg);
+  color: var(--btn-cancel-color);
+  border: 1px solid #e5e7eb;
+}
+.btn-cancel:hover {
+  background: var(--btn-cancel-hover-bg);
+  color: var(--btn-cancel-color);
+}
+
+.btn-delete {
+  background: var(--btn-delete-bg);
+  color: var(--btn-delete-color);
+  border: none;
+}
+.btn-delete:hover {
+  background: var(--btn-delete-hover-bg);
+  color: var(--btn-delete-color);
+}
+
 
 /* === SUMMARY CARDS === */
 .summary-cards {
@@ -555,27 +586,16 @@ select:focus-visible {
   background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%) !important;
 }
 
-.logout-btn {
-  background: linear-gradient(135deg, #ea6666 0%, #a24b4b 100%) !important;
-  color: white !important;
-  border-radius: 12px !important;
-  height: 48px !important;
-  font-weight: 600 !important;
-  text-transform: none !important;
-}
-.logout-btn:hover {
-  background: #d9363e !important;
-}
-
+.logout-btn,
 .delete-account-btn {
-  background: linear-gradient(135deg, #ea6666 0%, #a24b4b 100%) !important;
-  color: white !important;
+  background: var(--btn-delete-bg) !important;
+  color: var(--btn-delete-color) !important;
   border-radius: 12px !important;
   height: 48px !important;
   font-weight: 600 !important;
   text-transform: none !important;
 }
-
+.logout-btn:hover,
 .delete-account-btn:hover {
-  background: #d9363e !important;
+  background: var(--btn-delete-hover-bg) !important;
 }

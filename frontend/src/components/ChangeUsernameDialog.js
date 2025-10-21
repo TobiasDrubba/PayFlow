@@ -51,11 +51,12 @@ export default function ChangeUsernameDialog({ open, onClose, onChanged }) {
         {error && <Typography color="error">{error}</Typography>}
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} disabled={loading}>Cancel</Button>
+        <Button onClick={onClose} disabled={loading} className="btn-cancel">Cancel</Button>
         <Button
           onClick={handleChange}
           disabled={loading || !username}
           variant="contained"
+          className="btn-save"
         >
           Change Username
         </Button>
@@ -63,4 +64,3 @@ export default function ChangeUsernameDialog({ open, onClose, onChanged }) {
     </Dialog>
   );
 }
-

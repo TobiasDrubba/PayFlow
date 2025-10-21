@@ -5,10 +5,10 @@
 /* === UPLOAD CONTAINER === */
 .upload-container {
   background: white;
-  border-radius: 16px;
+  border-radius: var(--border-radius-lg);
   padding: 28px 32px;
   border: 2px dashed rgba(102, 126, 234, 0.2);
-  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-base);
   position: relative;
   overflow: hidden;
   margin-bottom: 32px;
@@ -18,24 +18,24 @@
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(102,126,234,0.03), rgba(118,75,162,0.03));
+  background: var(--primary-gradient);
   opacity: 0;
-  transition: opacity 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity var(--transition-base);
 }
 
 .upload-container:hover {
   border-color: rgba(102, 126, 234, 0.4);
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.08);
+  box-shadow: var(--shadow-md);
 }
 
 .upload-container:hover::before {
-  opacity: 1;
+  opacity: 0.03;
 }
 
 .upload-container.has-files {
   border-style: solid;
   border-color: rgba(102, 126, 234, 0.3);
-  background: linear-gradient(135deg, rgba(102,126,234,0.02), rgba(118,75,162,0.02));
+  background: var(--surface-gradient);
 }
 
 /* === UPLOAD HEADER === */
@@ -88,15 +88,15 @@
   align-items: center;
   gap: 10px;
   padding: 12px 24px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: var(--border-radius-md);
+  background: var(--primary-gradient);
   color: white;
   border: none;
-  border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-md);
   letter-spacing: 0.01em;
   overflow: hidden;
 }
@@ -112,7 +112,8 @@
 
 .upload-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+  background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+  box-shadow: var(--shadow-lg);
 }
 
 .upload-btn:hover::before {
@@ -126,7 +127,6 @@
 .upload-btn:disabled {
   background: linear-gradient(135deg, rgba(102,126,234,0.3), rgba(118,75,162,0.3));
   cursor: not-allowed;
-  transform: none;
   box-shadow: none;
 }
 
@@ -172,12 +172,13 @@
   gap: 12px;
   padding: 16px;
   background: white;
-  border-radius: 12px;
+  border-radius: var(--border-radius-md);
   border: 1px solid rgba(0, 0, 0, 0.08);
   transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
   animation: slideIn 300ms cubic-bezier(0.4, 0, 0.2, 1);
   position: relative; /* Ensure stacking context for z-index */
   z-index: 1;
+  box-shadow: var(--shadow-sm);
 }
 
 @keyframes slideIn {
@@ -233,13 +234,13 @@
 .file-type-select {
   padding: 10px 16px;
   border: 2px solid rgba(102, 126, 234, 0.2);
-  border-radius: 10px;
+  border-radius: var(--border-radius-sm);
   font-size: 14px;
   font-weight: 600;
   color: #667eea;
   background: white;
   cursor: pointer;
-  transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all var(--transition-base);
   outline: none;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1.5L6 6.5L11 1.5' stroke='%23667eea' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -273,9 +274,10 @@
   margin-top: 20px;
   padding: 16px;
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05));
-  border-radius: 12px;
+  border-radius: var(--border-radius-md);
   border: 1px solid rgba(16, 185, 129, 0.2);
   animation: fadeIn 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
 }
 
 @keyframes fadeIn {
@@ -318,12 +320,13 @@
   gap: 10px;
   padding: 14px 18px;
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), rgba(220, 38, 38, 0.05));
-  border-radius: 10px;
+  border-radius: var(--border-radius-sm);
   border: 1px solid rgba(239, 68, 68, 0.2);
   color: #dc2626;
   font-size: 14px;
   font-weight: 600;
   animation: shake 400ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-sm);
 }
 
 @keyframes shake {
@@ -381,6 +384,7 @@
 @media (max-width: 768px) {
   .upload-container {
     padding: 20px 16px;
+    border-radius: var(--border-radius-md);
   }
 
   .upload-actions {
@@ -434,3 +438,4 @@
   font-weight: 500;
   margin: 0;
 }
+
