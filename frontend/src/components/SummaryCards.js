@@ -135,7 +135,7 @@ export default function SummaryCards({ dateRange, setDateRange, onAggregate, sum
   const cards = [
     {
       key: "total",
-      label: "Total Sum",
+      label: "Total Expenses",
       sum: summary.total,
       caption:
         summary.totalStart && summary.totalEnd

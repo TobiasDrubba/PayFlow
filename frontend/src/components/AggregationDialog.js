@@ -85,8 +85,8 @@ export default function AggregationDialog({
     if (!data || !data.nodes || !data.links) return null;
     if (!data.nodes.length || !data.links.length) return null;
 
-    // Find the root node ("Total Sum")
-    const rootIdx = data.nodes.findIndex((n) => n.name === "Total Sum");
+    // Find the root node ("Total Expenses")
+    const rootIdx = data.nodes.findIndex((n) => n.name === "Total Expenses");
     if (rootIdx === -1) return null;
 
     // Filter out nodes with negative values (except root)

@@ -13,8 +13,8 @@ def build_sankey_data(result: dict, metadata: dict, category_tree: dict):
         if name in node_map:
             return node_map[name]
         value = 0
-        if name == "Total Sum":
-            value = metadata["total sum"]
+        if name == "Total Expenses":
+            value = metadata["Total Expenses"]
         elif name in result:
             value = result[name]
         nodes.append({"name": name, "value": value})
@@ -22,7 +22,7 @@ def build_sankey_data(result: dict, metadata: dict, category_tree: dict):
         idx += 1
         return node_map[name]
 
-    add_node("Total Sum")
+    add_node("Total Expenses")
 
     links = []
 
@@ -53,7 +53,7 @@ def build_sankey_data(result: dict, metadata: dict, category_tree: dict):
         if value > 0:
             links.append(
                 {
-                    "source": node_map["Total Sum"],
+                    "source": node_map["Total Expenses"],
                     "target": node_map[top_cat],
                     "value": value,
                 }
@@ -62,7 +62,7 @@ def build_sankey_data(result: dict, metadata: dict, category_tree: dict):
             links.append(
                 {
                     "source": node_map[top_cat],
-                    "target": node_map["Total Sum"],
+                    "target": node_map["Total Expenses"],
                     "value": abs(value),
                 }
             )
@@ -74,7 +74,7 @@ def build_sankey_data(result: dict, metadata: dict, category_tree: dict):
             add_node(special)
             links.append(
                 {
-                    "source": node_map["Total Sum"],
+                    "source": node_map["Total Expenses"],
                     "target": node_map[special],
                     "value": val,
                 }
@@ -84,7 +84,7 @@ def build_sankey_data(result: dict, metadata: dict, category_tree: dict):
             links.append(
                 {
                     "source": node_map[special],
-                    "target": node_map["Total Sum"],
+                    "target": node_map["Total Expenses"],
                     "value": abs(val),
                 }
             )

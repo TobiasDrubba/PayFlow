@@ -513,7 +513,7 @@ def sum_payments_by_category_db(
 
     output = {k: -v for k, v in result.items() if v != 0.0}
     metadata = {
-        "total sum": round(total_sum),
+        "Total Expenses": round(total_sum),
         "invalid categories": sorted(list(invalid_categories_set)),
     }
     return output, metadata
