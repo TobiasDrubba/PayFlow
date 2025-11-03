@@ -10,7 +10,6 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
-    Request,
     UploadFile,
 )
 from pydantic import BaseModel, Field, RootModel
@@ -22,12 +21,9 @@ from app.domain.services.auth_service import get_current_user
 from app.domain.services.payment_service import (
     aggregate_payments_sankey_db,
     all_merchant_same_category_service,
-    cache_mailgun_form_attachments,
     get_category_tree,
-    get_mailgun_cached_files_for_user,
     get_payments_csv_stream,
     get_sums_for_ranges_service,
-    import_cached_mailgun_zips,
     import_payment_files_service,
     list_categories,
     list_payments,
@@ -374,62 +370,3 @@ def all_merchant_same_category(
         return {"all_same": result}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
-
-@router.post("/mailgun/inbound")
-async def mailgun_inbound_endpoint(request: Request):
-    """
-    Endpoint to receive Mailgun inbound POSTs containing encrypted zip attachments.
-    Delegates processing and caching to the service layer.
-    """
-    form = await request.form()
-    try:
-        username, saved = cache_mailgun_form_attachments(form)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return {
-        "status": "cached",
-        "username": username,
-        "cached_files": len(saved),
-    }
-
-
-@router.get("/mailgun/cache")
-def get_mailgun_cached_files(current_user=Depends(get_current_user)):
-    """
-    Return cached Mailgun attachments for the authenticated user.
-    Delegates retrieval to the service layer.
-    """
-    return get_mailgun_cached_files_for_user(current_user)
-
-
-class MailgunCachedImportItem(BaseModel):
-    filename: str
-    password: str
-    type: str
-
-
-class MailgunCachedImportRequest(BaseModel):
-    items: List[MailgunCachedImportItem]
-
-
-@router.post("/mailgun/import_cached")
-async def import_cached_mailgun_files(
-    req: MailgunCachedImportRequest,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
-):
-    """
-    Frontend calls this endpoint with a list of {filename, password?, type}.
-    Tries to unzip each named cached zip using given password and import files.
-    """
-    # Delegate heavy lifting to service layer
-    # convert Pydantic models to plain dicts for the service layer
-    items_as_dicts = [i.model_dump() for i in req.items]
-    result = await import_cached_mailgun_zips(items_as_dicts, db, current_user)
-    # If nothing imported and there are errors, signal failure
-    if result.get("imported", 0) == 0 and result.get("errors"):
-        from fastapi.responses import JSONResponse
-
-        return JSONResponse(status_code=400, content={"detail": result["errors"]})
-    return result
