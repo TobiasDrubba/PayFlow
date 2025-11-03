@@ -285,14 +285,14 @@ React.useEffect(() => {
           borderBottom: '1px solid rgba(0,0,0,0.06)',
         }}>
           <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: -0.01 }}>
-            Upload Payment Files
+            Import Payment Data
           </Typography>
           <IconButton onClick={() => setUploadDialogOpen(false)} size="small">
             <CloseIcon />
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
-          <FileUpload onSuccess={handleUploadSuccess} />
+          <FileUpload onSuccess={handleUploadSuccess} dialogOpen={uploadDialogOpen} />
         </DialogContent>
       </Dialog>
 

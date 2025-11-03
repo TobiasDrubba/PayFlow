@@ -236,3 +236,30 @@ export async function allMerchantSameCategory(merchant, custCategory) {
   );
   return response.json();
 }
+
+// --- Mailgun / auth helpers ---
+export async function fetchCurrentUser() {
+  const response = await fetchWithAuth(`${API_URL}/auth/me`);
+  return response.json();
+}
+
+export async function fetchMailgunCache() {
+  const response = await fetchWithAuth(`${API_URL}/mailgun/cache`);
+  return response.json();
+}
+
+export async function importMailgunCached(items) {
+  // items: [{ filename, password, type }, ...]
+  const response = await fetchWithAuth(`${API_URL}/mailgun/import_cached`, {
+    method: "POST",
+    body: { items },
+  });
+  return response.json();
+}
+
+// New: remove a cached mailgun file
+export async function removeMailgunCacheFile(filename) {
+  const url = `${API_URL}/mailgun/cache?filename=${encodeURIComponent(filename)}`;
+  const response = await fetchWithAuth(url, { method: "DELETE" });
+  return response.json();
+}

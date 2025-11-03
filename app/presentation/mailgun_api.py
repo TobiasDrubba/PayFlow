@@ -1,11 +1,14 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.data.repositories.payment_repository import SessionLocal
 from app.domain.services.auth_service import get_current_user
+from app.integrations.mail_service import (
+    remove_mailgun_cached_file_for_user,  # <-- new import
+)
 from app.integrations.mail_service import (
     cache_mailgun_form_attachments,
     get_mailgun_cached_files_for_user,
@@ -77,3 +80,18 @@ async def import_cached_mailgun_files(
 
         return JSONResponse(status_code=400, content={"detail": result["errors"]})
     return result
+
+
+@router.delete("/cache")
+def delete_mailgun_cached_file(
+    filename: str = Query(..., description="Filename to remove from cache"),
+    current_user=Depends(get_current_user),
+):
+    """
+    Remove a cached mailgun attachment (by filename) for the current user.
+    """
+    try:
+        remove_mailgun_cached_file_for_user(current_user, filename)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    return {"removed": filename}

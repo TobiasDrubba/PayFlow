@@ -279,3 +279,36 @@ async def import_cached_mailgun_zips(
             MAILGUN_ATTACHMENT_CACHE.pop(username, None)
 
     return {"imported": imported, "errors": errors}
+
+
+def remove_mailgun_cached_file_for_user(current_user: Any, filename: str) -> None:
+    """
+    Remove a cached attachment by filename for a given user.
+    Deletes the underlying temp file and removes the metadata entry from the cache.
+    Raises ValueError if not found.
+    """
+    username = _derive_cache_username_from_user(current_user)
+    entries = MAILGUN_ATTACHMENT_CACHE.get(username, [])
+    match = None
+    for e in entries:
+        if e.get("filename") == filename:
+            match = e
+            break
+    if not match:
+        raise ValueError(f"{filename}: not found in cache for user {username}")
+    # attempt to remove file on disk
+    path = match.get("path")
+    if path and os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception:
+            # best-effort removal
+            pass
+    try:
+        entries.remove(match)
+    except Exception:
+        pass
+    if entries:
+        MAILGUN_ATTACHMENT_CACHE[username] = entries
+    else:
+        MAILGUN_ATTACHMENT_CACHE.pop(username, None)
