@@ -411,7 +411,7 @@ export default function FileUpload({ onSuccess, dialogOpen }) {
               Your custom email
             </div>
             <div style={{ padding: "8px 12px", background: "#f6f8fb", borderRadius: 8, display: "inline-block", fontFamily: "monospace" }}>
-              {mailgunUsername ? `${mailgunUsername}@mg.payflow.de` : "Loading..."}
+              {mailgunUsername ? `${mailgunUsername}@payflow.darpey.de` : "Loading..."}
             </div>
           </div>
 

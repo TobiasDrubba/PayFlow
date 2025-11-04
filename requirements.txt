@@ -10,3 +10,4 @@ passlib
 jose
 psycopg2-binary
 requests
+pyzipper
