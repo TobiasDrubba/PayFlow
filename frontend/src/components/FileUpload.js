@@ -160,6 +160,9 @@ export default function FileUpload({ onSuccess, dialogOpen }) {
           });
           return next;
         });
+
+        // Notify parent that imports happened so it can refresh payments (same as file upload)
+        if (onSuccess) onSuccess();
       }
     } catch (err) {
       // fetchWithAuth throws Errors with message (could be array or string)
