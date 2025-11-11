@@ -46,9 +46,7 @@ def extract_wechat_download_url(html: str) -> Optional[str]:
     Extract WeChat Pay download URL from email HTML/text.
     Only URLs matching known WeChat Pay domains are returned.
     """
-    pattern = r"""https://
-    (?:tenpay\.wechatpay\.cn|wx\.tenpay\.com|
-    file\.api\.weixin\.qq\.com)/[^\s\"'>]+"""
+    pattern = r"""https://(?:tenpay\.wechatpay\.cn|wx\.tenpay\.com|file\.api\.weixin\.qq\.com)/[^\s\"'>]+"""  # noqa: E501
     match = re.search(pattern, html)
     return match.group(0) if match else None
 
