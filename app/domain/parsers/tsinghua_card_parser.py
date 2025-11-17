@@ -65,7 +65,11 @@ def parse_tsinghua_card_file(filepath: str) -> List[Payment]:
             elif 16 <= hour < 24:
                 cust_category = "Canteen Dinner"
             else:
-                raise ValueError("Transaction time is outside expected range.")
+                raise ValueError(
+                    f"Transaction time "
+                    f"{datetime.strptime(row[DATE_COL], '%Y-%m-%d %H:%M:%S')}"
+                    f" is outside expected range."
+                )
             payment = Payment(
                 date=datetime.strptime(row[DATE_COL], "%Y-%m-%d %H:%M:%S"),
                 amount=amount,

@@ -110,6 +110,9 @@ def fetch_and_store_exchange_rates(
             response = requests.get(url)
             response.raise_for_status()
             exchange_data = response.json()
+            # set exchange_data["end_date"] to end_str to fix monday issue
+            # occurs if weekend rates haven't been published yet
+            exchange_data["end_date"] = end_str
             upsert_rates_from_api(db, exchange_data)
         except requests.RequestException as e:
             print(f"Exchange rate API error: {e}")
