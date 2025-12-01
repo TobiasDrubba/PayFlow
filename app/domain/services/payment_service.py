@@ -45,6 +45,10 @@ from app.data.repositories.payment_repository import (
     upsert_payments,
 )
 from app.domain.helpers.aggregation import build_sankey_data
+from app.domain.helpers.categorizer import (
+    auto_categorize_drinks,
+    auto_categorize_tsinghua_water,
+)
 from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 create_payment_tables()
@@ -120,12 +124,42 @@ def fetch_and_store_exchange_rates(
             print(f"Unexpected error fetching exchange rates: {e}")
 
 
+def _has_child_category(db: Session, user_id: int, category_name: str) -> bool:
+    """
+    Returns True if the user's category tree contains category_name (case-insensitive).
+    """
+    try:
+        cats = child_categories(db, user_id)
+    except Exception:
+        return False
+    return any(c.lower() == category_name.lower() for c in (cats or []))
+
+
 def _import_payments_with_parser(
     parser_func, source_filepath: str, db: Session, user_id: int
 ) -> int:
     payments = parser_func(source_filepath)
     for p in payments:
         p.user_id = user_id
+
+    # If user's category tree contains relevant categories, attempt auto-categorization.
+    try:
+        categorize_drink = False
+        categorize_water = False
+        if len(payments) > 0:
+            fp = payments[0]
+            categorize_drink = (
+                fp.source == PaymentSource.ALIPAY or fp.source == PaymentSource.WECHAT
+            )
+            categorize_water = fp.source == PaymentSource.TSINGHUA_CARD
+        if categorize_drink and _has_child_category(db, user_id, "Drink"):
+            auto_categorize_drinks(payments)
+        if categorize_water and _has_child_category(db, user_id, "Water"):
+            auto_categorize_tsinghua_water(payments)
+    except Exception as e:
+        # don't block import on auto-categorization errors
+        print(f"Error during auto-categorization: {e}")
+        pass
 
     # Determine earliest and latest payment dates
     dates = [p.date for p in payments if hasattr(p, "date") and p.date]
