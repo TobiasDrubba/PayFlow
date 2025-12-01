@@ -196,7 +196,7 @@ export default function FileUpload({ onSuccess, dialogOpen }) {
     if (lowerName.includes("微信") || lowerName.includes("wechat")) {
       return "WeChat";
     }
-    if (lowerName.includes("tsinghua") || lowerName.includes("card")) {
+    if (lowerName.includes("tsinghua") || lowerName.includes("card") || fileName.includes("ÓÃ»§½»Ò×¼ÇÂ¼")) {
       return "Tsinghua Card";
     }
     return ""; // Default to empty if no match
