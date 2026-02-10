@@ -70,7 +70,7 @@ export default function SettingsDialog({
   };
 
   // Currency selection logic
-  const currencyOptions = ["CNY", "EUR", "USD"];
+  const currencyOptions = ["CNY", "EUR", "USD", "KRW", "JPY", "VND", "MYR", "HKD"];
   const [currency, setCurrency] = useState(() => {
     const stored = localStorage.getItem("currency");
     return stored && currencyOptions.includes(stored) ? stored : "CNY";

@@ -10,6 +10,7 @@ function formatSum(sum, currency) {
   let symbol = "元";
   if (currency === "USD") symbol = "$";
   else if (currency === "EUR") symbol = "€";
+  if (currency !== "CNY") symbol = currency;
   if (abs >= 10000) {
     display = `${(abs / 1000).toFixed(1)}K ${symbol}`;
   } else {

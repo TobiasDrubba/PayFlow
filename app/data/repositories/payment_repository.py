@@ -104,16 +104,25 @@ def get_all_payments(
     sort_order = desc if sort_direction == "desc" else asc
     query = query.order_by(sort_order(sort_column))
 
-    if currency in ("EUR", "USD"):
-        query = query.join(
-            CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date
-        )
+    if currency:
+        currency = currency.upper()
         if currency == "EUR":
+            currency = "EURO"  # Dirty fix for now
+
+        # Only convert if the currency exists as a rate column
+        if hasattr(CurrencyRatesORM, currency):
+            rate_column = getattr(CurrencyRatesORM, currency)
+
+            query = query.join(
+                CurrencyRatesORM,
+                PaymentORM.date.cast(Date) == CurrencyRatesORM.date,
+            )
+
             payments = (
                 query.with_entities(
                     PaymentORM.id,
                     PaymentORM.date,
-                    (PaymentORM.amount * CurrencyRatesORM.EURO).label("amount"),
+                    (PaymentORM.amount * rate_column).label("amount"),
                     PaymentORM.currency,
                     PaymentORM.merchant,
                     PaymentORM.auto_category,
@@ -127,44 +136,27 @@ def get_all_payments(
                 .limit(page_size)
                 .all()
             )
-        else:
-            payments = (
-                query.with_entities(
-                    PaymentORM.id,
-                    PaymentORM.date,
-                    (PaymentORM.amount * CurrencyRatesORM.USD).label("amount"),
-                    PaymentORM.currency,
-                    PaymentORM.merchant,
-                    PaymentORM.auto_category,
-                    PaymentORM.source,
-                    PaymentORM.type,
-                    PaymentORM.note,
-                    PaymentORM.category,
-                    PaymentORM.user_id,
+
+            return [
+                Payment(
+                    id=p[0],
+                    date=p[1],
+                    amount=p[2],
+                    currency=currency,
+                    merchant=p[4],
+                    auto_category=p[5],
+                    source=p[6],
+                    type=p[7],
+                    note=p[8],
+                    category=p[9],
+                    user_id=p[10],
                 )
-                .offset((page - 1) * page_size)
-                .limit(page_size)
-                .all()
-            )
-        return [
-            Payment(
-                id=p[0],
-                date=p[1],
-                amount=p[2],
-                currency=currency,
-                merchant=p[4],
-                auto_category=p[5],
-                source=p[6],
-                type=p[7],
-                note=p[8],
-                category=p[9],
-                user_id=p[10],
-            )
-            for p in payments
-        ], total
-    else:
-        payments = query.offset((page - 1) * page_size).limit(page_size).all()
-        return [payment_to_domain(p) for p in payments], total
+                for p in payments
+            ], total
+
+    # fallback (no conversion)
+    payments = query.offset((page - 1) * page_size).limit(page_size).all()
+    return [payment_to_domain(p) for p in payments], total
 
 
 def upsert_payments(db, payments: List[Payment], user_id: int) -> int:

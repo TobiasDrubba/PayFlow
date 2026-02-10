@@ -33,7 +33,7 @@ const PAYMENT_SOURCES = [
   { value: "Other", label: "Other" },
 ];
 
-export default function AddCustomPaymentDialog({ open, onClose, categories = [], onSubmitted, currencyOptions = ["CNY", "EUR", "USD"] }) {
+export default function AddCustomPaymentDialog({ open, onClose, categories = [], onSubmitted, currencyOptions}) {
   const [form, setForm] = useState({
     date: new Date(),
     amount: "",

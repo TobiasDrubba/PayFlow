@@ -67,6 +67,7 @@ export default function AggregationDialog({
   let currencySymbol = "元";
   if (currency === "USD") currencySymbol = "$";
   else if (currency === "EUR") currencySymbol = "€";
+  else if (currency !== "CNY") currencySymbol = currency;
 
   const formatValue = React.useCallback(
     (v) => `${new Intl.NumberFormat().format(v)} ${currencySymbol}`,

@@ -53,12 +53,11 @@ async function fetchWithAuth(url, { method = "GET", headers = {}, body, isForm =
   return response;
 }
 
+const currencyOptions = ["CNY", "EUR", "USD", "KRW", "JPY", "VND", "MYR", "HKD"];
+
 function getCurrencyParam() {
   const currency = localStorage.getItem("currency");
-  if (currency === "EUR" || currency === "USD") {
-    return currency;
-  }
-  return null;
+  return currencyOptions.includes(currency) ? currency : null;
 }
 
 export async function fetchPayments({ page = 1, pageSize = 50, search = "", sortField = "date", sortDirection = "desc" } = {}) {

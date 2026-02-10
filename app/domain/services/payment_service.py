@@ -53,7 +53,8 @@ from app.domain.models.payment import Payment, PaymentSource, PaymentType
 
 create_payment_tables()
 
-SUPPORTED_CURRENCIES = {"CNY", "EUR", "USD"}
+# Replace existing SUPPORTED_CURRENCIES
+SUPPORTED_CURRENCIES = {"CNY", "EUR", "USD", "KRW", "JPY", "VND", "MYR", "HKD"}
 
 
 def child_categories(db: Session, user_id: int) -> List[str]:
@@ -106,9 +107,10 @@ def fetch_and_store_exchange_rates(
     if not has_currency_data_for_range(db, start_date, end_date):
         start_str = start_date.strftime("%Y-%m-%d")
         end_str = end_date.strftime("%Y-%m-%d")
+        # include new symbols (added HKD)
         url = (
             f"https://api.frankfurter.dev/v1/{start_str}..{end_str}"
-            f"?base=CNY&symbols=EUR,USD"
+            f"?base=CNY&symbols=EUR,USD,JPY,KRW,VND,MYR,HKD"
         )
         try:
             response = requests.get(url)
@@ -268,38 +270,62 @@ def submit_custom_payment(
     rate_obj = get_currency_rates(db, date)
     euro_rate = rate_obj.EURO if rate_obj else None
     usd_rate = rate_obj.USD if rate_obj else None
+    jpy_rate = getattr(rate_obj, "JPY", None) if rate_obj else None
+    krw_rate = getattr(rate_obj, "KRW", None) if rate_obj else None
+    vnd_rate = (
+        getattr(rate_obj, "VND", 3746.2) if rate_obj else None
+    )  # Hardcoded for now
+    myr_rate = getattr(rate_obj, "MYR", None) if rate_obj else None
+    hkd_rate = getattr(rate_obj, "HKD", None) if rate_obj else None
 
-    # Fetch from API if missing
-    if euro_rate is None or usd_rate is None:
+    # Fetch from API if missing (request all symbols, include HKD)
+    if (
+        euro_rate is None
+        or usd_rate is None
+        or jpy_rate is None
+        or krw_rate is None
+        or vnd_rate is None
+        or myr_rate is None
+        or hkd_rate is None
+    ):
         api_url = (
             f"https://api.frankfurter.dev/v1/{date.strftime('%Y-%m-%d')}"
-            f"?base=CNY&symbols=EUR,USD"
+            f"?base=CNY&symbols=EUR,USD,JPY,KRW,VND,MYR,HKD"
         )
         try:
             response = requests.get(api_url)
             response.raise_for_status()
             data = response.json()
-            euro_rate = data["rates"].get("EUR")
-            usd_rate = data["rates"].get("USD")
-            if euro_rate is None or usd_rate is None:
-                raise ValueError("Exchange rate not found in API response")
-            set_currency_rates(db, date, euro_rate, usd_rate)
+            rates = data.get("rates", {})
+            euro_rate = rates.get("EUR", euro_rate)
+            usd_rate = rates.get("USD", usd_rate)
+            jpy_rate = rates.get("JPY", jpy_rate)
+            krw_rate = rates.get("KRW", krw_rate)
+            vnd_rate = rates.get("VND", vnd_rate)
+            myr_rate = rates.get("MYR", myr_rate)
+            hkd_rate = rates.get("HKD", hkd_rate)
+            set_currency_rates(
+                db, date, euro_rate, usd_rate, jpy_rate, krw_rate, myr_rate, hkd_rate
+            )
         except Exception as e:
             raise ValueError(f"Failed to fetch exchange rate: {e}")
 
-    # Convert to CNY if currency is EUR or USD
-    if currency in ("EUR", "USD"):
+    # Convert to CNY if currency is one of the foreign currencies
+    if currency in ("EUR", "USD", "JPY", "KRW", "VND", "MYR", "HKD"):
+        # Map currency to corresponding rate
+        rates_map = {
+            "EUR": euro_rate,
+            "USD": usd_rate,
+            "JPY": jpy_rate,
+            "KRW": krw_rate,
+            "VND": vnd_rate,
+            "MYR": myr_rate,
+            "HKD": hkd_rate,
+        }
+        rate = rates_map.get(currency)
+        if not rate:
+            raise ValueError(f"{currency} exchange rate not available")
         # Calculate amount in CNY by dividing through the rate
-        if currency == "EUR":
-            rate = euro_rate
-            if not euro_rate:
-                raise ValueError("EUR exchange rate not available")
-        elif currency == "USD":
-            rate = usd_rate
-            if not usd_rate:
-                raise ValueError("USD exchange rate not available")
-        else:
-            raise ValueError("Unsupported currency")
         amount = amount / rate
         currency = "CNY"
 

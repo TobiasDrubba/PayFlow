@@ -86,6 +86,7 @@ export default function PaymentTableRow({
         let symbol = "元";
         if (displayCurrency === "USD") symbol = "$";
         else if (displayCurrency === "EUR") symbol = "€";
+        if (displayCurrency !== "CNY") symbol = displayCurrency;
         return (
           <TableCell
             key={`${payment.id}-amount`}
