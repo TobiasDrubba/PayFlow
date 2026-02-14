@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     asc,
+    case,
     cast,
     desc,
     func,
@@ -111,18 +112,62 @@ def get_all_payments(
 
         # Only convert if the currency exists as a rate column
         if hasattr(CurrencyRatesORM, currency):
-            rate_column = getattr(CurrencyRatesORM, currency)
+            target_rate_column = getattr(CurrencyRatesORM, currency)
 
             query = query.join(
                 CurrencyRatesORM,
                 PaymentORM.date.cast(Date) == CurrencyRatesORM.date,
             )
 
+            # Build conversion expression based on payment's original currency
+            # If payment is in CNY: amount * target_rate
+            # If payment is in other currency: (amount / source_rate) * target_rate
+            # This simplifies to: amount * (target_rate / source_rate)
+
+            # Create CASE expression for each supported currency
+            # Get all currency rate columns
+            currency_columns = {
+                "CNY": None,  # CNY is the base, no conversion needed
+                "EURO": CurrencyRatesORM.EURO,
+                "USD": CurrencyRatesORM.USD,
+                "JPY": CurrencyRatesORM.JPY,
+                "KRW": CurrencyRatesORM.KRW,
+                "VND": CurrencyRatesORM.VND,
+                "MYR": CurrencyRatesORM.MYR,
+                "HKD": CurrencyRatesORM.HKD,
+            }
+
+            # Build CASE statement for amount conversion
+            # For each currency: if payment.currency == X, then convert accordingly
+            when_clauses = []
+            for curr_name, source_rate_col in currency_columns.items():
+                if curr_name == "CNY":
+                    # CNY to target: just multiply by target rate
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount * target_rate_column,
+                        )
+                    )
+                else:
+                    # Other currency to target: (amount / source_rate) * target_rate
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount / source_rate_col * target_rate_column,
+                        )
+                    )
+
+            # Default case: treat as CNY if currency not recognized
+            converted_amount = case(
+                *when_clauses, else_=PaymentORM.amount * target_rate_column
+            )
+
             payments = (
                 query.with_entities(
                     PaymentORM.id,
                     PaymentORM.date,
-                    (PaymentORM.amount * rate_column).label("amount"),
+                    converted_amount.label("amount"),
                     PaymentORM.currency,
                     PaymentORM.merchant,
                     PaymentORM.auto_category,
@@ -154,9 +199,72 @@ def get_all_payments(
                 for p in payments
             ], total
 
-    # fallback (no conversion)
-    payments = query.offset((page - 1) * page_size).limit(page_size).all()
-    return [payment_to_domain(p) for p in payments], total
+    # fallback (no target currency specified - convert everything to CNY)
+    query = query.join(
+        CurrencyRatesORM,
+        PaymentORM.date.cast(Date) == CurrencyRatesORM.date,
+    )
+
+    # Build CASE statement to convert all currencies to CNY
+    currency_columns = {
+        "CNY": None,  # CNY stays as is
+        "EURO": CurrencyRatesORM.EURO,
+        "USD": CurrencyRatesORM.USD,
+        "JPY": CurrencyRatesORM.JPY,
+        "KRW": CurrencyRatesORM.KRW,
+        "VND": CurrencyRatesORM.VND,
+        "MYR": CurrencyRatesORM.MYR,
+        "HKD": CurrencyRatesORM.HKD,
+    }
+
+    # Convert to CNY: if already CNY keep amount, otherwise divide by rate
+    when_clauses = []
+    for curr_name, source_rate_col in currency_columns.items():
+        if curr_name == "CNY":
+            when_clauses.append((PaymentORM.currency == curr_name, PaymentORM.amount))
+        else:
+            when_clauses.append(
+                (PaymentORM.currency == curr_name, PaymentORM.amount / source_rate_col)
+            )
+
+    # Default: treat as CNY if currency not recognized
+    converted_amount = case(*when_clauses, else_=PaymentORM.amount)
+
+    payments = (
+        query.with_entities(
+            PaymentORM.id,
+            PaymentORM.date,
+            converted_amount.label("amount"),
+            PaymentORM.currency,
+            PaymentORM.merchant,
+            PaymentORM.auto_category,
+            PaymentORM.source,
+            PaymentORM.type,
+            PaymentORM.note,
+            PaymentORM.category,
+            PaymentORM.user_id,
+        )
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    return [
+        Payment(
+            id=p[0],
+            date=p[1],
+            amount=p[2],
+            currency="CNY",  # All converted to CNY
+            merchant=p[4],
+            auto_category=p[5],
+            source=p[6],
+            type=p[7],
+            note=p[8],
+            category=p[9],
+            user_id=p[10],
+        )
+        for p in payments
+    ], total
 
 
 def upsert_payments(db, payments: List[Payment], user_id: int) -> int:

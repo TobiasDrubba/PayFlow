@@ -372,6 +372,10 @@ async def import_payment_files_service(
             "app.domain.parsers.tsinghua_card_parser",
             fromlist=["parse_tsinghua_card_file"],
         ).parse_tsinghua_card_file,
+        PaymentSource.OTHER.value: lambda: __import__(
+            "app.domain.parsers.other_parser",
+            fromlist=["parse_other_file"],
+        ).parse_other_file,
     }
 
     imported = 0

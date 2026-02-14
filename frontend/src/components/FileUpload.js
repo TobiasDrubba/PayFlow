@@ -13,6 +13,7 @@ const paymentSourceOptions = [
   { value: "Alipay", label: "Alipay" },
   { value: "WeChat", label: "WeChat" },
   { value: "Tsinghua Card", label: "Tsinghua Card" },
+  { value: "Other", label: "Other" },
 ];
 
 export default function FileUpload({ onSuccess, dialogOpen }) {
