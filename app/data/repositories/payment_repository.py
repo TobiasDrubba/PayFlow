@@ -491,9 +491,9 @@ def sum_payments_in_db_range(
         "HKD": CurrencyRatesORM.HKD,
     }
 
-    if currency:
+    if currency in ("EUR", "USD"):
         # Convert to target currency
-        target_currency = "EURO" if currency == "EUR" else currency
+        target_currency = "EURO" if currency == "EUR" else "USD"
         target_rate_column = getattr(CurrencyRatesORM, target_currency)
 
         # Build CASE statement: convert payment currency to CNY, then to target
@@ -609,21 +609,100 @@ def sum_payments_by_category_db(
     # Build base query
     filters = build_base_payment_filters(user_id, start_date, end_date, days)
 
+    # Build currency conversion mapping
+    currency_columns = {
+        "CNY": None,
+        "EURO": CurrencyRatesORM.EURO,
+        "USD": CurrencyRatesORM.USD,
+        "JPY": CurrencyRatesORM.JPY,
+        "KRW": CurrencyRatesORM.KRW,
+        "VND": CurrencyRatesORM.VND,
+        "MYR": CurrencyRatesORM.MYR,
+        "HKD": CurrencyRatesORM.HKD,
+    }
+
     # Currency conversion
-    if currency in ("EUR", "USD"):
-        if currency == "EUR":
-            amount_expr = PaymentORM.amount * CurrencyRatesORM.EURO
+    if currency:
+        target_currency = "EURO" if currency == "EUR" else currency
+        if hasattr(CurrencyRatesORM, target_currency):
+            target_rate_column = getattr(CurrencyRatesORM, target_currency)
+
+            # Build CASE statement: convert payment currency to CNY, then to target
+            when_clauses = []
+            for curr_name, source_rate_col in currency_columns.items():
+                if curr_name == "CNY":
+                    # CNY to target: amount * target_rate
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount * target_rate_column,
+                        )
+                    )
+                else:
+                    # Other to target: (amount / source_rate) * target_rate
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount / source_rate_col * target_rate_column,
+                        )
+                    )
+
+            amount_expr = case(
+                *when_clauses, else_=PaymentORM.amount * target_rate_column
+            )
+
+            query = db.query(
+                PaymentORM.category,
+                func.sum(amount_expr).label("sum"),
+            ).join(
+                CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date
+            )
         else:
-            amount_expr = PaymentORM.amount * CurrencyRatesORM.USD
+            # Currency not supported, fallback to CNY conversion
+            when_clauses = []
+            for curr_name, source_rate_col in currency_columns.items():
+                if curr_name == "CNY":
+                    when_clauses.append(
+                        (PaymentORM.currency == curr_name, PaymentORM.amount)
+                    )
+                else:
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount / source_rate_col,
+                        )
+                    )
+
+            amount_expr = case(*when_clauses, else_=PaymentORM.amount)
+
+            query = db.query(
+                PaymentORM.category,
+                func.sum(amount_expr).label("sum"),
+            ).join(
+                CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date
+            )
+    else:
+        # No target currency - convert everything to CNY
+        when_clauses = []
+        for curr_name, source_rate_col in currency_columns.items():
+            if curr_name == "CNY":
+                when_clauses.append(
+                    (PaymentORM.currency == curr_name, PaymentORM.amount)
+                )
+            else:
+                when_clauses.append(
+                    (
+                        PaymentORM.currency == curr_name,
+                        PaymentORM.amount / source_rate_col,
+                    )
+                )
+
+        amount_expr = case(*when_clauses, else_=PaymentORM.amount)
+
         query = db.query(
             PaymentORM.category,
             func.sum(amount_expr).label("sum"),
         ).join(CurrencyRatesORM, PaymentORM.date.cast(Date) == CurrencyRatesORM.date)
-    else:
-        query = db.query(
-            PaymentORM.category,
-            func.sum(PaymentORM.amount).label("sum"),
-        )
 
     query = query.filter(*filters).group_by(PaymentORM.category)
     rows = query.all()
