@@ -491,34 +491,56 @@ def sum_payments_in_db_range(
         "HKD": CurrencyRatesORM.HKD,
     }
 
-    if currency in ("EUR", "USD"):
+    if currency:
         # Convert to target currency
-        target_currency = "EURO" if currency == "EUR" else "USD"
-        target_rate_column = getattr(CurrencyRatesORM, target_currency)
+        target_currency = "EURO" if currency == "EUR" else currency
+        if hasattr(CurrencyRatesORM, target_currency):
+            target_rate_column = getattr(CurrencyRatesORM, target_currency)
 
-        # Build CASE statement: convert payment currency to CNY, then to target
-        when_clauses = []
-        for curr_name, source_rate_col in currency_columns.items():
-            if curr_name == "CNY":
-                # CNY to target: amount * target_rate
-                when_clauses.append(
-                    (
-                        PaymentORM.currency == curr_name,
-                        PaymentORM.amount * target_rate_column,
+            # Build CASE statement: convert payment currency to CNY, then to target
+            when_clauses = []
+            for curr_name, source_rate_col in currency_columns.items():
+                if curr_name == "CNY":
+                    # CNY to target: amount * target_rate
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount * target_rate_column,
+                        )
                     )
-                )
-            else:
-                # Other to target: (amount / source_rate) * target_rate
-                when_clauses.append(
-                    (
-                        PaymentORM.currency == curr_name,
-                        PaymentORM.amount / source_rate_col * target_rate_column,
+                else:
+                    # Other to target: (amount / source_rate) * target_rate
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount / source_rate_col * target_rate_column,
+                        )
                     )
-                )
 
-        amount_expr = case(*when_clauses, else_=PaymentORM.amount * target_rate_column)
-        total = query.with_entities(func.sum(amount_expr)).scalar()
-        return total or 0.0
+            amount_expr = case(
+                *when_clauses, else_=PaymentORM.amount * target_rate_column
+            )
+            total = query.with_entities(func.sum(amount_expr)).scalar()
+            return total or 0.0
+        else:
+            # Currency not supported, fallback to CNY conversion
+            when_clauses = []
+            for curr_name, source_rate_col in currency_columns.items():
+                if curr_name == "CNY":
+                    when_clauses.append(
+                        (PaymentORM.currency == curr_name, PaymentORM.amount)
+                    )
+                else:
+                    when_clauses.append(
+                        (
+                            PaymentORM.currency == curr_name,
+                            PaymentORM.amount / source_rate_col,
+                        )
+                    )
+
+            amount_expr = case(*when_clauses, else_=PaymentORM.amount)
+            total = query.with_entities(func.sum(amount_expr)).scalar()
+            return total or 0.0
     else:
         # No target currency specified - convert everything to CNY
         when_clauses = []
