@@ -95,6 +95,11 @@ export default function PaymentsTable() {
 
   // Confirm dialog state for delete
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const toNaiveISOString = (d) => {
+    if (!d) return null;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
 
   // Handler for summary card aggregation
   const handleSummaryCardAggregate = async ({ type, start, end, days }) => {
@@ -118,8 +123,8 @@ export default function PaymentsTable() {
       if (type === "past7" || type === "past30") {
         params.days = days;
       } else if (type === "custom") {
-        params.start_date = start.toISOString();
-        params.end_date = end.toISOString();
+        params.start_date = toNaiveISOString(start);
+        params.end_date = toNaiveISOString(end);
       }
       const data = await fetchAggregation(params);
       setAggregationData(data);

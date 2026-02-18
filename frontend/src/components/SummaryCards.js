@@ -48,7 +48,11 @@ export default function SummaryCards({ dateRange, setDateRange, onAggregate, sum
   const [loading, setLoading] = React.useState(true);
 
   // Helper for naive ISO string
-  const toNaiveISOString = (d) => d ? d.toISOString().slice(0, 19) : null;
+  const toNaiveISOString = (d) => {
+    if (!d) return null;
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  };
 
   React.useEffect(() => {
     setLoading(true);
