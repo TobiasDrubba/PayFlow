@@ -376,6 +376,10 @@ async def import_payment_files_service(
             "app.domain.parsers.dkb_parser",
             fromlist=["parse_dkb_file"],
         ).parse_dkb_file,
+        PaymentSource.DKB_SHARED.value: lambda: __import__(
+            "app.domain.parsers.dkb_shared_parser",
+            fromlist=["parse_dkb_shared_file"],
+        ).parse_dkb_shared_file,
         PaymentSource.OTHER.value: lambda: __import__(
             "app.domain.parsers.other_parser",
             fromlist=["parse_other_file"],

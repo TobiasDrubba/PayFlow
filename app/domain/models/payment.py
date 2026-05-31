@@ -9,6 +9,7 @@ class PaymentSource(Enum):
     WECHAT = "WeChat"
     TSINGHUA_CARD = "Tsinghua Card"
     DKB = "DKB"
+    DKB_SHARED = "DKB Shared"
     OTHER = "Other"
 
 
