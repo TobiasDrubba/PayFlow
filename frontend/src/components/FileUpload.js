@@ -13,6 +13,7 @@ const paymentSourceOptions = [
   { value: "Alipay", label: "Alipay" },
   { value: "WeChat", label: "WeChat" },
   { value: "Tsinghua Card", label: "Tsinghua Card" },
+  { value: "DKB", label: "DKB" },
   { value: "Other", label: "Other" },
 ];
 
@@ -199,6 +200,9 @@ export default function FileUpload({ onSuccess, dialogOpen }) {
     }
     if (lowerName.includes("tsinghua") || lowerName.includes("card") || fileName.includes("ÓÃ»§½»Ò×¼ÇÂ¼")) {
       return "Tsinghua Card";
+    }
+    if (lowerName.includes("dkb")) {
+      return "DKB";
     }
     return ""; // Default to empty if no match
   };

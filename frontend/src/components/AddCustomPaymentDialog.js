@@ -30,6 +30,7 @@ const PAYMENT_SOURCES = [
   { value: "Alipay", label: "Alipay" },
   { value: "WeChat", label: "WeChat" },
   { value: "Tsinghua Card", label: "Tsinghua Card" },
+  { value: "DKB", label: "DKB" },
   { value: "Other", label: "Other" },
 ];
 

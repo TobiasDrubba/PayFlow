@@ -49,6 +49,29 @@ class CategoryTreeORM(Base):
     tree_json = Column(Text, nullable=False)
 
 
+def normalize_stored_currency(currency: str) -> str:
+    """Map API/ISO codes to the currency values used in conversion logic."""
+    c = (currency or "").strip().upper()
+    if c == "EUR":
+        return "EURO"
+    return c
+
+
+def payment_currency_rate_columns():
+    """Payment currency -> rate column; CNY is the conversion base."""
+    return {
+        "CNY": None,
+        "EURO": CurrencyRatesORM.EURO,
+        "EUR": CurrencyRatesORM.EURO,
+        "USD": CurrencyRatesORM.USD,
+        "JPY": CurrencyRatesORM.JPY,
+        "KRW": CurrencyRatesORM.KRW,
+        "VND": CurrencyRatesORM.VND,
+        "MYR": CurrencyRatesORM.MYR,
+        "HKD": CurrencyRatesORM.HKD,
+    }
+
+
 def create_payment_tables():
     Base.metadata.create_all(bind=engine)
 
@@ -126,16 +149,7 @@ def get_all_payments(
 
             # Create CASE expression for each supported currency
             # Get all currency rate columns
-            currency_columns = {
-                "CNY": None,  # CNY is the base, no conversion needed
-                "EURO": CurrencyRatesORM.EURO,
-                "USD": CurrencyRatesORM.USD,
-                "JPY": CurrencyRatesORM.JPY,
-                "KRW": CurrencyRatesORM.KRW,
-                "VND": CurrencyRatesORM.VND,
-                "MYR": CurrencyRatesORM.MYR,
-                "HKD": CurrencyRatesORM.HKD,
-            }
+            currency_columns = payment_currency_rate_columns()
 
             # Build CASE statement for amount conversion
             # For each currency: if payment.currency == X, then convert accordingly
@@ -206,16 +220,7 @@ def get_all_payments(
     )
 
     # Build CASE statement to convert all currencies to CNY
-    currency_columns = {
-        "CNY": None,  # CNY stays as is
-        "EURO": CurrencyRatesORM.EURO,
-        "USD": CurrencyRatesORM.USD,
-        "JPY": CurrencyRatesORM.JPY,
-        "KRW": CurrencyRatesORM.KRW,
-        "VND": CurrencyRatesORM.VND,
-        "MYR": CurrencyRatesORM.MYR,
-        "HKD": CurrencyRatesORM.HKD,
-    }
+    currency_columns = payment_currency_rate_columns()
 
     # Convert to CNY: if already CNY keep amount, otherwise divide by rate
     when_clauses = []
@@ -282,7 +287,7 @@ def upsert_payments(db, payments: List[Payment], user_id: int) -> int:
                 PaymentORM(
                     date=p.date,
                     amount=p.amount,
-                    currency=p.currency,
+                    currency=normalize_stored_currency(p.currency),
                     merchant=p.merchant,
                     auto_category=p.auto_category,
                     source=p.source,
@@ -315,7 +320,7 @@ def add_payment(db, payment: Payment, user_id: int) -> Payment:
     payment_orm = PaymentORM(
         date=payment.date,
         amount=payment.amount,
-        currency=payment.currency,
+        currency=normalize_stored_currency(payment.currency),
         merchant=payment.merchant,
         auto_category=payment.auto_category,
         source=payment.source,
@@ -480,16 +485,7 @@ def sum_payments_in_db_range(
     )
 
     # Build currency conversion mapping
-    currency_columns = {
-        "CNY": None,
-        "EURO": CurrencyRatesORM.EURO,
-        "USD": CurrencyRatesORM.USD,
-        "JPY": CurrencyRatesORM.JPY,
-        "KRW": CurrencyRatesORM.KRW,
-        "VND": CurrencyRatesORM.VND,
-        "MYR": CurrencyRatesORM.MYR,
-        "HKD": CurrencyRatesORM.HKD,
-    }
+    currency_columns = payment_currency_rate_columns()
 
     if currency:
         # Convert to target currency
@@ -631,17 +627,7 @@ def sum_payments_by_category_db(
     # Build base query
     filters = build_base_payment_filters(user_id, start_date, end_date, days)
 
-    # Build currency conversion mapping
-    currency_columns = {
-        "CNY": None,
-        "EURO": CurrencyRatesORM.EURO,
-        "USD": CurrencyRatesORM.USD,
-        "JPY": CurrencyRatesORM.JPY,
-        "KRW": CurrencyRatesORM.KRW,
-        "VND": CurrencyRatesORM.VND,
-        "MYR": CurrencyRatesORM.MYR,
-        "HKD": CurrencyRatesORM.HKD,
-    }
+    currency_columns = payment_currency_rate_columns()
 
     # Currency conversion
     if currency:
