@@ -283,6 +283,7 @@ def upsert_payments(db, payments: List[Payment], user_id: int) -> int:
             .first()
         )
         if not exists:
+            p = auto_set_category(db, p, user_id)
             db.add(
                 PaymentORM(
                     date=p.date,
@@ -302,6 +303,29 @@ def upsert_payments(db, payments: List[Payment], user_id: int) -> int:
     return count
 
 
+def auto_set_category(db, payment: Payment, user_id: int) -> Payment:
+    """
+    Automatically assigns a category if all previous payments with the same merchant
+    have the same category and there are at least three of them.
+    """
+    result = (
+        db.query(PaymentORM.category, func.count(PaymentORM.id).label("count"))
+        .filter(
+            PaymentORM.user_id == user_id,
+            PaymentORM.merchant == payment.merchant,
+            PaymentORM.category != "",
+        )
+        .group_by(PaymentORM.category)
+        .order_by(desc("count"))
+        .all()
+    )
+
+    if len(result) == 1 and result[0].count >= 3:
+        payment.category = result[0].category
+
+    return payment
+
+
 def add_payment(db, payment: Payment, user_id: int) -> Payment:
     exists = (
         db.query(PaymentORM)
@@ -317,6 +341,8 @@ def add_payment(db, payment: Payment, user_id: int) -> Payment:
         raise ValueError(
             "Duplicate payment (same date, amount, merchant) already exists"
         )
+    payment = auto_set_category(db, payment, user_id)
+
     payment_orm = PaymentORM(
         date=payment.date,
         amount=payment.amount,
